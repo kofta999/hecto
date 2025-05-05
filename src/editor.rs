@@ -2,6 +2,9 @@ mod terminal;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use terminal::{Position, Size, Terminal};
 
+const NAME: &str = env!("CARGO_PKG_NAME");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Default)]
 pub struct Editor {
     should_quit: bool,
@@ -52,6 +55,7 @@ impl Editor {
             Terminal::print("またね〜\r\n")?;
         } else {
             Self::draw_rows()?;
+            Self::draw_welcome_message()?;
             Terminal::move_cursor_to(&Position { x: 0, y: 0 })?;
         }
         Terminal::show_cursor()?;
@@ -73,5 +77,20 @@ impl Editor {
         }
 
         Ok(())
+    }
+
+    fn draw_welcome_message() -> Result<(), std::io::Error> {
+        let size = Terminal::size()?;
+        let mut welcome_message = format!("{NAME} editor -- Version {VERSION}");
+        welcome_message.truncate(size.width as usize);
+
+        #[allow(clippy::cast_possible_truncation)]
+        let position = Position {
+            x: (size.width - welcome_message.len() as u16) / 2,
+            y: size.height / 3,
+        };
+
+        Terminal::move_cursor_to(&position)?;
+        Terminal::print(welcome_message)
     }
 }
