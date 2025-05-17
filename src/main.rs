@@ -12,5 +12,5 @@ mod editor;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    Editor::default().run(args.get(1));
+    Editor::new(args.get(1)).unwrap().run();
 }

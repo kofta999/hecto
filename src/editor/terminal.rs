@@ -1,6 +1,5 @@
-use std::io::{self, Error, Write};
-
 use crossterm::{Command, cursor, queue, style, terminal};
+use std::io::{self, Error, Write};
 
 #[derive(Default)]
 pub struct Size {
@@ -30,13 +29,20 @@ pub struct Terminal;
 impl Terminal {
     pub fn initialize() -> Result<(), Error> {
         terminal::enable_raw_mode()?;
+        Self::enter_alternate_screen()?;
         Self::clear_screen()?;
-        Self::move_caret_to(&Position { row: 0, col: 0 })?;
-        Self::execute()
+        Self::execute()?;
+
+        Ok(())
     }
 
     pub fn terminate() -> Result<(), Error> {
-        terminal::disable_raw_mode()
+        Self::leave_alternate_screen()?;
+        Self::show_caret()?;
+        Self::execute()?;
+        terminal::disable_raw_mode()?;
+
+        Ok(())
     }
 
     pub fn clear_screen() -> Result<(), Error> {
@@ -80,7 +86,21 @@ impl Terminal {
         io::stdout().flush()
     }
 
-    pub fn queue_command(command: impl Command) -> Result<(), Error> {
+    pub fn enter_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(terminal::EnterAlternateScreen)
+    }
+
+    pub fn leave_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(terminal::LeaveAlternateScreen)
+    }
+
+    pub fn print_row(row: usize, line_text: &str) -> Result<(), Error> {
+        Self::move_caret_to(&Position { row, col: 0 })?;
+        Self::clear_line()?;
+        Self::print(line_text)
+    }
+
+    fn queue_command(command: impl Command) -> Result<(), Error> {
         queue!(io::stdout(), command)
     }
 }

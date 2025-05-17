@@ -1,12 +1,13 @@
 mod buffer;
 mod terminal;
 mod view;
-
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read};
 use terminal::{PointMovements, Position, Size, Terminal};
 use view::View;
 
-#[derive(Default)]
+type Result<T> = std::result::Result<T, std::io::Error>;
+
+#[derive(Default, Clone, Copy)]
 pub struct Location {
     x: usize,
     y: usize,
@@ -20,37 +21,53 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn run(&mut self, filename: Option<&String>) {
-        Terminal::initialize().unwrap();
+    pub fn new(filename: Option<&String>) -> Result<Self> {
+        let current_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |panic_info| {
+            let _ = Terminal::terminate();
+            current_hook(panic_info);
+        }));
+
+        Terminal::initialize()?;
+
+        let mut view = View::default();
+
         if let Some(file) = filename {
-            self.view.load(file);
+            view.load(file);
         }
 
-        let result = self.repl();
-        Terminal::terminate().unwrap();
-        result.unwrap();
+        // Note, using Default::default() here breaks raw mode
+        // no questions asked
+        Ok(Self {
+            view,
+            should_quit: false,
+            location: Location::default(),
+        })
     }
 
-    fn repl(&mut self) -> Result<(), std::io::Error> {
+    pub fn run(&mut self) {
         loop {
-            self.refresh_screen()?;
+            self.refresh_screen();
             if self.should_quit {
                 break;
             }
 
-            let event = read()?;
-            self.evaluate_event(event)?;
-
-            Terminal::execute()?;
+            match read() {
+                Ok(event) => self.evaluate_event(event),
+                Err(err) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Could not read event: {err:?}")
+                    }
+                }
+            }
         }
-
-        Ok(())
     }
 
     // There's no big performance overhead if I passed by value here
     // and this reduces function complexity
     #[allow(clippy::needless_pass_by_value)]
-    fn evaluate_event(&mut self, event: Event) -> Result<(), std::io::Error> {
+    fn evaluate_event(&mut self, event: Event) {
         match event {
             Event::Key(KeyEvent {
                 code,
@@ -63,15 +80,15 @@ impl Editor {
                         self.should_quit = true;
                     }
                     // Movements
-                    (KeyCode::Char('h'), _) => self.move_point(&PointMovements::Left)?,
-                    (KeyCode::Char('j'), _) => self.move_point(&PointMovements::Down)?,
-                    (KeyCode::Char('k'), _) => self.move_point(&PointMovements::Up)?,
-                    (KeyCode::Char('l'), _) => self.move_point(&PointMovements::Right)?,
+                    (KeyCode::Char('h'), _) => self.move_point(&PointMovements::Left),
+                    (KeyCode::Char('j'), _) => self.move_point(&PointMovements::Down),
+                    (KeyCode::Char('k'), _) => self.move_point(&PointMovements::Up),
+                    (KeyCode::Char('l'), _) => self.move_point(&PointMovements::Right),
 
-                    (KeyCode::PageUp, _) => self.move_point(&PointMovements::TopSide)?,
-                    (KeyCode::PageDown, _) => self.move_point(&PointMovements::BottomSide)?,
-                    (KeyCode::Home, _) => self.move_point(&PointMovements::LeftSide)?,
-                    (KeyCode::End, _) => self.move_point(&PointMovements::RightSide)?,
+                    (KeyCode::PageUp, _) => self.move_point(&PointMovements::TopSide),
+                    (KeyCode::PageDown, _) => self.move_point(&PointMovements::BottomSide),
+                    (KeyCode::Home, _) => self.move_point(&PointMovements::LeftSide),
+                    (KeyCode::End, _) => self.move_point(&PointMovements::RightSide),
                     _ => (),
                 }
             }
@@ -85,34 +102,22 @@ impl Editor {
             }
             _ => (),
         }
-
-        Ok(())
     }
 
-    fn refresh_screen(&mut self) -> Result<(), std::io::Error> {
-        Terminal::hide_caret()?;
-        Terminal::move_caret_to(&Position::default())?;
-        if self.should_quit {
-            Terminal::clear_screen()?;
-            Terminal::print("またね〜\r\n")?;
-        } else {
-            self.view.render()?;
-
-            Terminal::move_caret_to(&Position {
-                col: self.location.x,
-                row: self.location.y,
-            })?;
-        }
-        Terminal::show_caret()?;
-
-        Terminal::execute()?;
-
-        Ok(())
+    fn refresh_screen(&mut self) {
+        let _ = Terminal::hide_caret();
+        self.view.render();
+        let _ = Terminal::move_caret_to(&Position {
+            col: self.location.x,
+            row: self.location.y,
+        });
+        let _ = Terminal::show_caret();
+        let _ = Terminal::execute();
     }
 
-    pub fn move_point(&mut self, movement: &PointMovements) -> Result<(), std::io::Error> {
+    pub fn move_point(&mut self, movement: &PointMovements) {
         let Location { mut x, mut y } = self.location;
-        let Size { height, width } = Terminal::size()?;
+        let Size { height, width } = Terminal::size().unwrap_or_default();
 
         match movement {
             PointMovements::Up => y = y.saturating_sub(1).min(height.saturating_sub(1)),
@@ -126,7 +131,14 @@ impl Editor {
         }
 
         self.location = Location { x, y };
+    }
+}
 
-        Ok(())
+impl Drop for Editor {
+    fn drop(&mut self) {
+        let _ = Terminal::terminate();
+        if self.should_quit {
+            let _ = Terminal::print("またね〜\r\n");
+        }
     }
 }

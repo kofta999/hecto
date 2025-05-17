@@ -1,12 +1,10 @@
 use super::{
     buffer::Buffer,
-    terminal::{Position, Size, Terminal},
+    terminal::{Size, Terminal},
 };
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-type Result<T> = std::result::Result<T, std::io::Error>;
 
 pub struct View {
     buffer: Buffer,
@@ -15,12 +13,15 @@ pub struct View {
 }
 
 impl View {
-    pub fn render(&self) -> Result<()> {
+    pub fn render(&self) {
         if !self.needs_redraw {
-            return Ok(());
+            return;
         }
 
-        let Size { height, width } = Terminal::size()?;
+        let Size { height, width } = Terminal::size().unwrap_or_default();
+        if height == 0 || width == 0 {
+            return;
+        }
 
         // Idc if the message wasn't 100% centered
         #[allow(clippy::integer_division)]
@@ -34,16 +35,14 @@ impl View {
                     line
                 };
 
-                Self::render_line(current_row, truncated_line)?;
+                Self::render_line(current_row, truncated_line);
             } else if current_row == vertical_center && self.buffer.is_empty() {
                 let message = Self::build_welcome_message(width);
-                Self::render_line(current_row, &message)?;
+                Self::render_line(current_row, &message);
             } else {
-                Self::render_line(current_row, "~")?;
+                Self::render_line(current_row, "~");
             }
         }
-
-        Ok(())
     }
 
     pub fn load(&mut self, filename: &str) {
@@ -57,10 +56,9 @@ impl View {
         self.needs_redraw = true;
     }
 
-    fn render_line(at: usize, line_text: &str) -> Result<()> {
-        Terminal::move_caret_to(&Position { row: at, col: 0 })?;
-        Terminal::clear_line()?;
-        Terminal::print(line_text)
+    fn render_line(at: usize, line_text: &str) {
+        let result = Terminal::print_row(at, line_text);
+        debug_assert!(result.is_ok());
     }
 
     fn build_welcome_message(width: usize) -> String {
