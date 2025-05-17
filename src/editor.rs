@@ -20,8 +20,13 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn run(&mut self) {
+    pub fn run(&mut self, filename: Option<&String>) {
         Terminal::initialize().unwrap();
+
+        if let Some(file) = filename {
+            self.view.load(file);
+        }
+
         let result = self.repl();
         Terminal::terminate().unwrap();
         result.unwrap();

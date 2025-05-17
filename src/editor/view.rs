@@ -13,6 +13,32 @@ pub struct View {
 
 impl View {
     pub fn render(&self) -> Result<(), std::io::Error> {
+        if self.buffer.is_empty() {
+            Self::render_welcome_message()
+        } else {
+            self.render_buffer()
+        }
+    }
+
+    pub fn render_welcome_message() -> Result<(), std::io::Error> {
+        let Size { height, .. } = Terminal::size()?;
+
+        for current_row in 0..height {
+            Terminal::clear_line()?;
+
+            Terminal::print("~")?;
+
+            if current_row.saturating_add(1) < height {
+                Terminal::print("\r\n")?;
+            }
+        }
+
+        Self::draw_welcome_message()?;
+
+        Ok(())
+    }
+
+    pub fn render_buffer(&self) -> Result<(), std::io::Error> {
         let Size { height, .. } = Terminal::size()?;
 
         for current_row in 0..height {
@@ -28,8 +54,6 @@ impl View {
                 Terminal::print("\r\n")?;
             }
         }
-
-        Self::draw_welcome_message()?;
 
         Ok(())
     }
@@ -51,5 +75,11 @@ impl View {
 
         Terminal::move_caret_to(&position)?;
         Terminal::print(&welcome_message)
+    }
+
+    pub fn load(&mut self, filename: &str) {
+        if let Ok(buffer) = Buffer::load(filename) {
+            self.buffer = buffer;
+        }
     }
 }

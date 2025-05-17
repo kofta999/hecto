@@ -10,5 +10,7 @@ use editor::Editor;
 mod editor;
 
 fn main() {
-    Editor::default().run();
+    let args: Vec<String> = std::env::args().collect();
+
+    Editor::default().run(args.get(1));
 }
