@@ -62,8 +62,8 @@ impl Editor {
                 }
                 // Movements
                 KeyCode::Char('h') => self.move_point(&PointMovements::Left)?,
-                KeyCode::Char('j') => self.move_point(&PointMovements::Up)?,
-                KeyCode::Char('k') => self.move_point(&PointMovements::Down)?,
+                KeyCode::Char('j') => self.move_point(&PointMovements::Down)?,
+                KeyCode::Char('k') => self.move_point(&PointMovements::Up)?,
                 KeyCode::Char('l') => self.move_point(&PointMovements::Right)?,
 
                 KeyCode::PageUp => self.move_point(&PointMovements::TopSide)?,
@@ -87,8 +87,8 @@ impl Editor {
             self.view.render()?;
 
             Terminal::move_caret_to(&Position {
-                row: self.location.x,
-                col: self.location.y,
+                col: self.location.x,
+                row: self.location.y,
             })?;
         }
         Terminal::show_caret()?;
@@ -103,9 +103,8 @@ impl Editor {
         let Size { height, width } = Terminal::size()?;
 
         match movement {
-            PointMovements::Up => y = y.saturating_add(1).min(height.saturating_sub(1)),
-
-            PointMovements::Down => y = y.saturating_sub(1).min(height.saturating_sub(1)),
+            PointMovements::Up => y = y.saturating_sub(1).min(height.saturating_sub(1)),
+            PointMovements::Down => y = y.saturating_add(1).min(height.saturating_sub(1)),
             PointMovements::Left => x = x.saturating_sub(1).min(width.saturating_sub(1)),
             PointMovements::Right => x = x.saturating_add(1).min(width.saturating_sub(1)),
             PointMovements::TopSide => y = 0,

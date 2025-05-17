@@ -49,7 +49,7 @@ impl Terminal {
     pub fn move_caret_to(position: &Position) -> Result<(), Error> {
         #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
         // It's fine to convert here, u16 < usize on Desktop systems (32/64bits)
-        Self::queue_command(cursor::MoveTo(position.row as u16, position.col as u16))
+        Self::queue_command(cursor::MoveTo(position.col as u16, position.row as u16))
     }
 
     pub fn size() -> Result<Size, Error> {

@@ -24,13 +24,13 @@ impl View {
         let Size { height, .. } = Terminal::size()?;
 
         for current_row in 0..height {
+            Terminal::move_caret_to(&Position {
+                row: current_row,
+                col: 0,
+            })?;
             Terminal::clear_line()?;
 
             Terminal::print("~")?;
-
-            if current_row.saturating_add(1) < height {
-                Terminal::print("\r\n")?;
-            }
         }
 
         Self::draw_welcome_message()?;
@@ -42,16 +42,16 @@ impl View {
         let Size { height, .. } = Terminal::size()?;
 
         for current_row in 0..height {
+            Terminal::move_caret_to(&Position {
+                row: current_row,
+                col: 0,
+            })?;
             Terminal::clear_line()?;
 
             if let Some(str) = self.buffer.lines.get(current_row) {
                 Terminal::print(str)?;
             } else {
                 Terminal::print("~")?;
-            }
-
-            if current_row.saturating_add(1) < height {
-                Terminal::print("\r\n")?;
             }
         }
 
@@ -69,8 +69,8 @@ impl View {
         #[allow(clippy::cast_possible_truncation)]
         #[allow(clippy::integer_division)]
         let position = Position {
-            row: (size.width - welcome_message.len()) / 2,
-            col: size.height / 3,
+            col: (size.width - welcome_message.len()) / 2,
+            row: size.height / 3,
         };
 
         Terminal::move_caret_to(&position)?;
