@@ -22,8 +22,6 @@ pub struct Editor {
 impl Editor {
     pub fn run(&mut self, filename: Option<&String>) {
         Terminal::initialize().unwrap();
-        self.view.needs_redraw = true;
-
         if let Some(file) = filename {
             self.view.load(file);
         }
@@ -41,7 +39,7 @@ impl Editor {
             }
 
             let event = read()?;
-            self.evaluate_event(&event)?;
+            self.evaluate_event(event)?;
 
             Terminal::execute()?;
         }
@@ -49,34 +47,43 @@ impl Editor {
         Ok(())
     }
 
-    fn evaluate_event(&mut self, event: &Event) -> Result<(), std::io::Error> {
-        if let Event::Key(KeyEvent {
-            code,
-            modifiers,
-            kind: KeyEventKind::Press,
-            ..
-        }) = event
-        {
-            match code {
-                KeyCode::Char('x') if *modifiers == KeyModifiers::CONTROL => {
-                    self.should_quit = true;
+    // There's no big performance overhead if I passed by value here
+    // and this reduces function complexity
+    #[allow(clippy::needless_pass_by_value)]
+    fn evaluate_event(&mut self, event: Event) -> Result<(), std::io::Error> {
+        match event {
+            Event::Key(KeyEvent {
+                code,
+                modifiers,
+                kind: KeyEventKind::Press,
+                ..
+            }) => {
+                match (code, modifiers) {
+                    (KeyCode::Char('x'), KeyModifiers::CONTROL) => {
+                        self.should_quit = true;
+                    }
+                    // Movements
+                    (KeyCode::Char('h'), _) => self.move_point(&PointMovements::Left)?,
+                    (KeyCode::Char('j'), _) => self.move_point(&PointMovements::Down)?,
+                    (KeyCode::Char('k'), _) => self.move_point(&PointMovements::Up)?,
+                    (KeyCode::Char('l'), _) => self.move_point(&PointMovements::Right)?,
+
+                    (KeyCode::PageUp, _) => self.move_point(&PointMovements::TopSide)?,
+                    (KeyCode::PageDown, _) => self.move_point(&PointMovements::BottomSide)?,
+                    (KeyCode::Home, _) => self.move_point(&PointMovements::LeftSide)?,
+                    (KeyCode::End, _) => self.move_point(&PointMovements::RightSide)?,
+                    _ => (),
                 }
-                // Movements
-                KeyCode::Char('h') => self.move_point(&PointMovements::Left)?,
-                KeyCode::Char('j') => self.move_point(&PointMovements::Down)?,
-                KeyCode::Char('k') => self.move_point(&PointMovements::Up)?,
-                KeyCode::Char('l') => self.move_point(&PointMovements::Right)?,
-
-                KeyCode::PageUp => self.move_point(&PointMovements::TopSide)?,
-                KeyCode::PageDown => self.move_point(&PointMovements::BottomSide)?,
-                KeyCode::Home => self.move_point(&PointMovements::LeftSide)?,
-                KeyCode::End => self.move_point(&PointMovements::RightSide)?,
-                _ => (),
             }
-        }
-
-        if let Event::Resize(_, _) = event {
-            self.view.needs_redraw = true;
+            Event::Resize(width_u16, height_u16) => {
+                // Will run into problems for rare edge case systems where usize < u16
+                #[allow(clippy::as_conversions)]
+                self.view.resize(Size {
+                    width: width_u16 as usize,
+                    height: height_u16 as usize,
+                });
+            }
+            _ => (),
         }
 
         Ok(())
@@ -89,10 +96,7 @@ impl Editor {
             Terminal::clear_screen()?;
             Terminal::print("またね〜\r\n")?;
         } else {
-            if self.view.needs_redraw {
-                self.view.render()?;
-                self.view.needs_redraw = false;
-            }
+            self.view.render()?;
 
             Terminal::move_caret_to(&Position {
                 col: self.location.x,

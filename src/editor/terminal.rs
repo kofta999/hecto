@@ -2,6 +2,7 @@ use std::io::{self, Error, Write};
 
 use crossterm::{Command, cursor, queue, style, terminal};
 
+#[derive(Default)]
 pub struct Size {
     pub height: usize,
     pub width: usize,
