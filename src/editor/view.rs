@@ -1,19 +1,25 @@
-use super::terminal::{Position, Size, Terminal};
+use super::{
+    buffer::Buffer,
+    terminal::{Position, Size, Terminal},
+};
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub struct View {}
+#[derive(Default)]
+pub struct View {
+    buffer: Buffer,
+}
 
 impl View {
-    pub fn render() -> Result<(), std::io::Error> {
+    pub fn render(&self) -> Result<(), std::io::Error> {
         let Size { height, .. } = Terminal::size()?;
 
         for current_row in 0..height {
             Terminal::clear_line()?;
 
-            if current_row == 0 {
-                Terminal::print("Hello World!")?;
+            if let Some(str) = self.buffer.lines.get(current_row) {
+                Terminal::print(str)?;
             } else {
                 Terminal::print("~")?;
             }

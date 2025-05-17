@@ -1,3 +1,4 @@
+mod buffer;
 mod terminal;
 mod view;
 
@@ -15,6 +16,7 @@ pub struct Location {
 pub struct Editor {
     location: Location,
     should_quit: bool,
+    view: View,
 }
 
 impl Editor {
@@ -77,7 +79,7 @@ impl Editor {
             Terminal::clear_screen()?;
             Terminal::print("またね〜\r\n")?;
         } else {
-            View::render()?;
+            self.view.render()?;
 
             Terminal::move_caret_to(&Position {
                 row: self.location.x,
