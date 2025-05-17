@@ -1,10 +1,9 @@
 mod terminal;
+mod view;
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read};
 use terminal::{PointMovements, Position, Size, Terminal};
-
-const NAME: &str = env!("CARGO_PKG_NAME");
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+use view::View;
 
 #[derive(Default)]
 pub struct Location {
@@ -78,8 +77,7 @@ impl Editor {
             Terminal::clear_screen()?;
             Terminal::print("またね〜\r\n")?;
         } else {
-            Self::draw_rows()?;
-            Self::draw_welcome_message()?;
+            View::render()?;
 
             Terminal::move_caret_to(&Position {
                 row: self.location.x,
@@ -91,39 +89,6 @@ impl Editor {
         Terminal::execute()?;
 
         Ok(())
-    }
-
-    fn draw_rows() -> Result<(), std::io::Error> {
-        let Size { height, .. } = Terminal::size()?;
-
-        for current_row in 0..height {
-            Terminal::clear_line()?;
-            Terminal::print('~')?;
-            if current_row.saturating_add(1) < height {
-                Terminal::print("\r\n")?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn draw_welcome_message() -> Result<(), std::io::Error> {
-        let size = Terminal::size()?;
-        let mut welcome_message = format!("{NAME} editor -- Version {VERSION}");
-
-        welcome_message.truncate(size.width);
-
-        #[allow(clippy::as_conversions)]
-        #[allow(clippy::arithmetic_side_effects)]
-        #[allow(clippy::cast_possible_truncation)]
-        #[allow(clippy::integer_division)]
-        let position = Position {
-            row: (size.width - welcome_message.len()) / 2,
-            col: size.height / 3,
-        };
-
-        Terminal::move_caret_to(&position)?;
-        Terminal::print(welcome_message)
     }
 
     pub fn move_point(&mut self, movement: &PointMovements) -> Result<(), std::io::Error> {

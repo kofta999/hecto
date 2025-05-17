@@ -1,7 +1,4 @@
-use std::{
-    fmt::Display,
-    io::{self, Error, Write},
-};
+use std::io::{self, Error, Write};
 
 use crossterm::{Command, cursor, queue, style, terminal};
 
@@ -74,7 +71,7 @@ impl Terminal {
         Self::queue_command(cursor::Show)
     }
 
-    pub fn print<T: Display>(s: T) -> Result<(), Error> {
+    pub fn print(s: &str) -> Result<(), Error> {
         Self::queue_command(style::Print(s))
     }
 
