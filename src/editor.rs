@@ -22,6 +22,7 @@ pub struct Editor {
 impl Editor {
     pub fn run(&mut self, filename: Option<&String>) {
         Terminal::initialize().unwrap();
+        self.view.needs_redraw = true;
 
         if let Some(file) = filename {
             self.view.load(file);
@@ -74,17 +75,24 @@ impl Editor {
             }
         }
 
+        if let Event::Resize(_, _) = event {
+            self.view.needs_redraw = true;
+        }
+
         Ok(())
     }
 
-    fn refresh_screen(&self) -> Result<(), std::io::Error> {
+    fn refresh_screen(&mut self) -> Result<(), std::io::Error> {
         Terminal::hide_caret()?;
         Terminal::move_caret_to(&Position::default())?;
         if self.should_quit {
             Terminal::clear_screen()?;
             Terminal::print("またね〜\r\n")?;
         } else {
-            self.view.render()?;
+            if self.view.needs_redraw {
+                self.view.render()?;
+                self.view.needs_redraw = false;
+            }
 
             Terminal::move_caret_to(&Position {
                 col: self.location.x,

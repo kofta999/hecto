@@ -9,6 +9,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Default)]
 pub struct View {
     buffer: Buffer,
+    pub needs_redraw: bool,
 }
 
 impl View {
@@ -39,7 +40,7 @@ impl View {
     }
 
     pub fn render_buffer(&self) -> Result<(), std::io::Error> {
-        let Size { height, .. } = Terminal::size()?;
+        let Size { height, width } = Terminal::size()?;
 
         for current_row in 0..height {
             Terminal::move_caret_to(&Position {
@@ -49,7 +50,10 @@ impl View {
             Terminal::clear_line()?;
 
             if let Some(str) = self.buffer.lines.get(current_row) {
-                Terminal::print(str)?;
+                let mut s = str.clone();
+                s.truncate(width);
+
+                Terminal::print(&s)?;
             } else {
                 Terminal::print("~")?;
             }
