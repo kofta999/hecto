@@ -1,7 +1,12 @@
 use super::{
-    buffer::Buffer,
-    terminal::{Size, Terminal},
+    editorcommand::{Direction, EditorCommand},
+    terminal::{Position, Size, Terminal},
 };
+use buffer::Buffer;
+use location::Location;
+mod buffer;
+mod line;
+mod location;
 
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -10,6 +15,8 @@ pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     size: Size,
+    location: Location,
+    scroll_offset: Location,
 }
 
 impl View {
@@ -26,16 +33,14 @@ impl View {
         // Idc if the message wasn't 100% centered
         #[allow(clippy::integer_division)]
         let vertical_center = height / 3;
+        let top = self.scroll_offset.y;
 
         for current_row in 0..height {
-            if let Some(line) = self.buffer.lines.get(current_row) {
-                let truncated_line = if line.len() >= width {
-                    &line[0..width]
-                } else {
-                    line
-                };
+            if let Some(line) = self.buffer.lines.get(current_row.saturating_add(top)) {
+                let left = self.scroll_offset.x;
+                let right = self.scroll_offset.x.saturating_add(width);
 
-                Self::render_line(current_row, truncated_line);
+                Self::render_line(current_row, &line.get(left..right));
             } else if current_row == vertical_center && self.buffer.is_empty() {
                 let message = Self::build_welcome_message(width);
                 Self::render_line(current_row, &message);
@@ -45,15 +50,69 @@ impl View {
         }
     }
 
+    pub fn handle_command(&mut self, command: EditorCommand) {
+        match command {
+            EditorCommand::Move(direction) => self.move_text_location(&direction),
+            EditorCommand::Resize(size) => self.resize(size),
+            EditorCommand::Quit => {}
+        }
+    }
+
     pub fn load(&mut self, filename: &str) {
         if let Ok(buffer) = Buffer::load(filename) {
             self.buffer = buffer;
         }
     }
 
-    pub fn resize(&mut self, to: Size) {
+    pub fn get_position(&self) -> Position {
+        self.location.subtract(self.scroll_offset).into()
+    }
+
+    pub fn move_text_location(&mut self, direction: &Direction) {
+        let Location { mut x, mut y } = self.location;
+        let Size { height, width } = Terminal::size().unwrap_or_default();
+
+        match direction {
+            Direction::Up => y = y.saturating_sub(1),
+            Direction::Down => y = y.saturating_add(1),
+            Direction::Left => x = x.saturating_sub(1),
+            Direction::Right => x = x.saturating_add(1),
+            Direction::TopSide => y = 0,
+            Direction::BottomSide => y = height.saturating_sub(1),
+            Direction::LeftSide => x = 0,
+            Direction::RightSide => x = width.saturating_sub(1),
+        }
+
+        self.location = Location { x, y };
+        self.scroll_location_into_view();
+    }
+
+    fn resize(&mut self, to: Size) {
         self.size = to;
         self.needs_redraw = true;
+    }
+
+    fn scroll_location_into_view(&mut self) {
+        let Location { x, y } = self.location;
+        let Size { height, width } = self.size;
+        let mut offset_changed = false;
+
+        if y < self.scroll_offset.y {
+            self.scroll_offset.y = y;
+            offset_changed = true;
+        } else if y >= self.scroll_offset.y.saturating_add(height) {
+            self.scroll_offset.y = y.saturating_sub(height).saturating_add(1);
+            offset_changed = true;
+        }
+
+        if x < self.scroll_offset.x {
+            self.scroll_offset.x = x;
+        } else if x >= self.scroll_offset.x.saturating_add(width) {
+            self.scroll_offset.x = x.saturating_sub(width).saturating_add(1);
+            offset_changed = true;
+        }
+
+        self.needs_redraw = offset_changed;
     }
 
     fn render_line(at: usize, line_text: &str) {
@@ -88,6 +147,8 @@ impl Default for View {
             buffer: Buffer::default(),
             needs_redraw: true,
             size: Terminal::size().unwrap_or_default(),
+            location: Location::default(),
+            scroll_offset: Location::default(),
         }
     }
 }

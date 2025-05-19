@@ -7,10 +7,13 @@
     clippy::integer_division
 )]
 use editor::Editor;
+use log::LevelFilter;
 mod editor;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+
+    simple_logging::log_to_file("test.log", LevelFilter::Info).unwrap();
 
     Editor::new(args.get(1)).unwrap().run();
 }

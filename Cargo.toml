@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 crossterm = "0.29.0"
+log = "0.4.27"
+simple-logging = "2.0.2"

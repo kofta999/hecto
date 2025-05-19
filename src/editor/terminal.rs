@@ -13,16 +13,6 @@ pub struct Position {
     pub col: usize,
 }
 
-pub enum PointMovements {
-    Up,
-    Down,
-    Left,
-    Right,
-    TopSide,
-    BottomSide,
-    LeftSide,
-    RightSide,
-}
 
 pub struct Terminal;
 
