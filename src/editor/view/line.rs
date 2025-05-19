@@ -40,9 +40,27 @@ impl Line {
                         0 | 1 => GraphemeWidth::Half,
                         _ => GraphemeWidth::Full,
                     },
-                    replacement: if g.width() == 0 { Some('·') } else { None },
+                    replacement: Line::replace_character(g),
                 })
                 .collect(),
+        }
+    }
+
+    fn replace_character(g: &str) -> Option<char> {
+        match g {
+            "\t" => Some(' '),
+            " " => None,
+            _ if g.width() > 0 && g.trim().is_empty() => Some('␣'),
+            _ if g.width() == 0 => {
+                let mut chars = g.chars();
+                if let Some(c) = chars.next() {
+                    if c.is_control() && chars.next().is_none() {
+                        return Some('▯');
+                    }
+                }
+                Some('·')
+            }
+            _ => None,
         }
     }
 

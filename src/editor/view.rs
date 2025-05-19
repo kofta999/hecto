@@ -4,7 +4,6 @@ use super::{
 };
 use buffer::Buffer;
 use line::Line;
-use log::info;
 mod buffer;
 mod line;
 
