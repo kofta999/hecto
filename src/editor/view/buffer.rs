@@ -21,4 +21,8 @@ impl Buffer {
 
         Ok(Self { lines })
     }
+
+    pub fn height(&self) -> usize {
+        self.lines.len()
+    }
 }
