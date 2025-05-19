@@ -75,24 +75,36 @@ impl View {
         let Size { height, .. } = Terminal::size().unwrap_or_default();
         let current_line_len = self.get_line_len(y);
         let buffer_len = self.buffer.lines.len();
-        info!("before movement: {current_line_len:?}");
 
         match direction {
             Direction::Up => y = y.saturating_sub(1),
             Direction::Down => y = y.saturating_add(1).min(buffer_len),
-            Direction::Left => x = x.saturating_sub(1),
-            Direction::Right => x = x.saturating_add(1).min(current_line_len.unwrap_or(0)),
+            Direction::Left => {
+                x = if x == 0 && y != 0 {
+                    y = y.saturating_sub(1);
+                    self.get_line_len(y)
+                } else {
+                    x.saturating_sub(1)
+                }
+            }
+            Direction::Right => {
+                x = if x == current_line_len {
+                    y = y.saturating_add(1).min(buffer_len);
+                    0
+                } else {
+                    x.saturating_add(1).min(current_line_len)
+                }
+            }
             Direction::PageUp => y = y.saturating_sub(height),
             Direction::PageDown => y = y.saturating_add(height).min(buffer_len),
             Direction::LeftSide => x = 0,
-            Direction::RightSide => x = current_line_len.unwrap_or(0),
+            Direction::RightSide => x = current_line_len,
         }
 
         let next_line_len = self.get_line_len(y);
-        info!("after movement: {next_line_len:?}");
 
-        if next_line_len.unwrap_or(0) < current_line_len.unwrap_or(0) {
-            x = x.min(next_line_len.unwrap_or(0));
+        if next_line_len < current_line_len {
+            x = x.min(next_line_len);
         }
 
         self.location = Location { x, y };
@@ -132,8 +144,8 @@ impl View {
         debug_assert!(result.is_ok());
     }
 
-    fn get_line_len(&self, at: usize) -> Option<usize> {
-        self.buffer.lines.get(at).map(Line::len)
+    fn get_line_len(&self, at: usize) -> usize {
+        self.buffer.lines.get(at).map_or(0, Line::len)
     }
 
     fn build_welcome_message(width: usize) -> String {
