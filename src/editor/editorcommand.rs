@@ -7,8 +7,8 @@ pub enum Direction {
     Down,
     Left,
     Right,
-    TopSide,
-    BottomSide,
+    PageUp,
+    PageDown,
     LeftSide,
     RightSide,
 }
@@ -39,8 +39,8 @@ impl TryFrom<Event> for EditorCommand {
                     (KeyCode::Char('k'), _) => Ok(Self::Move(Direction::Up)),
                     (KeyCode::Char('l'), _) => Ok(Self::Move(Direction::Right)),
 
-                    (KeyCode::PageUp, _) => Ok(Self::Move(Direction::TopSide)),
-                    (KeyCode::PageDown, _) => Ok(Self::Move(Direction::BottomSide)),
+                    (KeyCode::PageUp, _) => Ok(Self::Move(Direction::PageUp)),
+                    (KeyCode::PageDown, _) => Ok(Self::Move(Direction::PageDown)),
                     (KeyCode::Home, _) => Ok(Self::Move(Direction::LeftSide)),
                     (KeyCode::End, _) => Ok(Self::Move(Direction::RightSide)),
                     _ => Err(format!("KeyCode not supported: {code:?}")),
