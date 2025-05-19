@@ -130,6 +130,7 @@ impl View {
 
         if x < self.scroll_offset.x {
             self.scroll_offset.x = x;
+            offset_changed = true;
         } else if x >= self.scroll_offset.x.saturating_add(width) {
             self.scroll_offset.x = x.saturating_sub(width).saturating_add(1);
             offset_changed = true;
