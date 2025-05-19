@@ -5,7 +5,6 @@ use super::{
 use buffer::Buffer;
 use line::Line;
 use location::Location;
-use log::info;
 mod buffer;
 mod line;
 mod location;

@@ -41,8 +41,8 @@ impl TryFrom<Event> for EditorCommand {
 
                     (KeyCode::PageUp, _) => Ok(Self::Move(Direction::PageUp)),
                     (KeyCode::PageDown, _) => Ok(Self::Move(Direction::PageDown)),
-                    (KeyCode::Home, _) => Ok(Self::Move(Direction::LeftSide)),
-                    (KeyCode::End, _) => Ok(Self::Move(Direction::RightSide)),
+                    (KeyCode::Home | KeyCode::Char('0'), _) => Ok(Self::Move(Direction::LeftSide)),
+                    (KeyCode::End | KeyCode::Char('$'), _) => Ok(Self::Move(Direction::RightSide)),
                     _ => Err(format!("KeyCode not supported: {code:?}")),
                 }
             }
