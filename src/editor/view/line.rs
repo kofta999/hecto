@@ -18,6 +18,7 @@ impl GraphemeWidth {
 }
 
 #[derive(Debug)]
+/// A text unit, which is a grapheme in Unicode world
 struct TextFragment {
     grapheme: String,
     rendered_width: GraphemeWidth,
@@ -25,11 +26,13 @@ struct TextFragment {
 }
 
 #[derive(Debug)]
+/// A line of text fragments
 pub struct Line {
     fragments: Vec<TextFragment>,
 }
 
 impl Line {
+    /// Converts a string into a line
     pub fn from(line_str: &str) -> Self {
         Self {
             fragments: line_str
@@ -46,6 +49,7 @@ impl Line {
         }
     }
 
+    /// Replaces a grapheme with another character for display if needed
     fn replace_character(g: &str) -> Option<char> {
         match g {
             "\t" => Some(' '),
@@ -64,6 +68,7 @@ impl Line {
         }
     }
 
+    /// Gets the graphemes that can be displayed on screen
     pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
         if range.start >= range.end {
             return String::new();
@@ -95,6 +100,7 @@ impl Line {
         res
     }
 
+    /// Returns count of graphemes in the line
     pub fn grapheme_count(&self) -> usize {
         self.fragments.len()
     }

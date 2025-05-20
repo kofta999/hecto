@@ -84,18 +84,18 @@ impl Terminal {
         io::stdout().flush()
     }
 
-    pub fn enter_alternate_screen() -> Result<(), Error> {
-        Self::queue_command(terminal::EnterAlternateScreen)
-    }
-
-    pub fn leave_alternate_screen() -> Result<(), Error> {
-        Self::queue_command(terminal::LeaveAlternateScreen)
-    }
-
     pub fn print_row(row: usize, line_text: &str) -> Result<(), Error> {
         Self::move_caret_to(&Position { row, col: 0 })?;
         Self::clear_line()?;
         Self::print(line_text)
+    }
+
+    fn enter_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(terminal::EnterAlternateScreen)
+    }
+
+    fn leave_alternate_screen() -> Result<(), Error> {
+        Self::queue_command(terminal::LeaveAlternateScreen)
     }
 
     fn queue_command(command: impl Command) -> Result<(), Error> {

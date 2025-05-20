@@ -152,6 +152,13 @@ impl View {
         self.needs_redraw = true;
     }
 
+    fn scroll_text_location_into_view(&mut self) {
+        let Position { row, col } = self.text_location_into_position();
+
+        self.scroll_vertically(row);
+        self.scroll_horizontally(col);
+    }
+
     fn scroll_vertically(&mut self, to: usize) {
         let Size { height, .. } = self.size;
 
@@ -182,13 +189,6 @@ impl View {
         };
 
         self.needs_redraw = self.needs_redraw || offset_changed;
-    }
-
-    fn scroll_text_location_into_view(&mut self) {
-        let Position { row, col } = self.text_location_into_position();
-
-        self.scroll_vertically(row);
-        self.scroll_horizontally(col);
     }
 
     fn render_line(at: usize, line_text: &str) {
