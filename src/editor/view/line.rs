@@ -28,7 +28,7 @@ struct TextFragment {
     replacement: Option<char>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 /// A line of text fragments
 pub struct Line {
     fragments: Vec<TextFragment>,
@@ -58,6 +58,7 @@ impl Line {
     /// Replaces a grapheme with another character for display if needed
     fn replace_character(g: &str) -> Option<char> {
         match g {
+            // TODO: Fix
             "\t" => Some(' '),
             " " => None,
             _ if g.width() > 0 && g.trim().is_empty() => Some('␣'),
@@ -123,6 +124,7 @@ impl Line {
             .sum()
     }
 
+    /// Inserts a character at a position
     pub fn insert_char(&mut self, char: char, at: usize) {
         let mut res = String::new();
 
@@ -141,6 +143,7 @@ impl Line {
         self.fragments = Self::str_to_fragments(&res);
     }
 
+    /// Deletes a character at a position
     pub fn delete(&mut self, at: usize) {
         let mut res = String::new();
 
@@ -153,11 +156,23 @@ impl Line {
         self.fragments = Self::str_to_fragments(&res);
     }
 
+    /// Appends a Line to self
     pub fn append(&mut self, other: &Self) {
         let mut concat = self.to_string();
         concat.push_str(&other.to_string());
 
         self.fragments = Self::str_to_fragments(&concat);
+    }
+
+    /// Splits Line into two
+    pub fn split(&mut self, at: usize) -> Self {
+        if at > self.fragments.len() {
+            return Self::default();
+        }
+
+        Self {
+            fragments: self.fragments.split_off(at),
+        }
     }
 }
 

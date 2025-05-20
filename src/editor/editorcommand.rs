@@ -2,6 +2,11 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use super::terminal::Size;
 
+pub enum InsertionType {
+    Char(char),
+    Newline,
+}
+
 pub enum Direction {
     Up,
     Down,
@@ -17,7 +22,7 @@ pub enum EditorCommand {
     Move(Direction),
     Resize(Size),
     Quit,
-    Insert(char),
+    Insert(InsertionType),
     Delete(Direction),
 }
 
@@ -48,8 +53,10 @@ impl TryFrom<Event> for EditorCommand {
 
                     // Insertion
                     (KeyCode::Char(c), KeyModifiers::NONE | KeyModifiers::SHIFT) => {
-                        Ok(Self::Insert(c))
+                        Ok(Self::Insert(InsertionType::Char(c)))
                     }
+                    (KeyCode::Tab, _) => Ok(Self::Insert(InsertionType::Char('\t'))),
+                    (KeyCode::Enter, _) => Ok(Self::Insert(InsertionType::Newline)),
 
                     // Deletion
                     (KeyCode::Backspace, _) => Ok(Self::Delete(Direction::Left)),

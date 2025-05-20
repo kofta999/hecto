@@ -1,5 +1,5 @@
 use super::{
-    editorcommand::{Direction, EditorCommand},
+    editorcommand::{Direction, EditorCommand, InsertionType},
     terminal::{Position, Size, Terminal},
 };
 use buffer::Buffer;
@@ -29,7 +29,8 @@ impl View {
         match command {
             EditorCommand::Move(direction) => self.move_text_location(&direction),
             EditorCommand::Resize(size) => self.resize(size),
-            EditorCommand::Insert(char) => self.insert_char(char),
+            EditorCommand::Insert(InsertionType::Char(char)) => self.insert_char(char),
+            EditorCommand::Insert(InsertionType::Newline) => self.insert_newline(),
             EditorCommand::Delete(Direction::Left) => self.delete_left(),
             EditorCommand::Delete(Direction::Right) => self.delete_right(),
             // Only supports left and right deletions for now
@@ -267,6 +268,12 @@ impl View {
         }
 
         self.buffer.delete(self.text_location);
+        self.needs_redraw = true;
+    }
+
+    fn insert_newline(&mut self) {
+        self.buffer.insert_newline(self.text_location);
+        self.move_text_location(&Direction::Right);
         self.needs_redraw = true;
     }
 }
