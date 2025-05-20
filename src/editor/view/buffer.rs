@@ -1,4 +1,4 @@
-use super::line::Line;
+use super::{Location, line::Line};
 use std::fs;
 
 #[derive(Default)]
@@ -28,5 +28,17 @@ impl Buffer {
     /// Returns the length of buffer lines
     pub fn height(&self) -> usize {
         self.lines.len()
+    }
+
+    pub fn insert_char(&mut self, char: char, at: Location) {
+        if at.line_index > self.lines.len() {
+            return;
+        }
+
+        if at.line_index == self.lines.len() {
+            self.lines.push(Line::from(&char.to_string()));
+        } else if let Some(line) = self.lines.get_mut(at.line_index) {
+            line.insert_char(char, at.grapheme_index);
+        }
     }
 }

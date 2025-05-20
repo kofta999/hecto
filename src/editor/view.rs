@@ -29,6 +29,7 @@ impl View {
         match command {
             EditorCommand::Move(direction) => self.move_text_location(&direction),
             EditorCommand::Resize(size) => self.resize(size),
+            EditorCommand::Insert(char) => self.insert_char(char),
             EditorCommand::Quit => {}
         }
     }
@@ -227,6 +228,20 @@ impl View {
         welcome_message.truncate(width);
 
         full_message
+    }
+
+    fn insert_char(&mut self, char: char) {
+        let old_len = self.get_line_width(self.text_location.line_index);
+        self.buffer.insert_char(char, self.text_location);
+        let new_len = self.get_line_width(self.text_location.line_index);
+
+        let delta = new_len.saturating_sub(old_len);
+
+        if delta > 0 {
+            self.move_right();
+        }
+
+        self.needs_redraw = true;
     }
 }
 

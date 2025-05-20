@@ -32,21 +32,24 @@ pub struct Line {
 }
 
 impl Line {
-    /// Converts a string into a line
     pub fn from(line_str: &str) -> Self {
         Self {
-            fragments: line_str
-                .graphemes(true)
-                .map(|g| TextFragment {
-                    grapheme: g.to_string(),
-                    rendered_width: match g.width() {
-                        0 | 1 => GraphemeWidth::Half,
-                        _ => GraphemeWidth::Full,
-                    },
-                    replacement: Line::replace_character(g),
-                })
-                .collect(),
+            fragments: Self::str_to_fragments(line_str),
         }
+    }
+
+    fn str_to_fragments(line_str: &str) -> Vec<TextFragment> {
+        line_str
+            .graphemes(true)
+            .map(|g| TextFragment {
+                grapheme: g.to_string(),
+                rendered_width: match g.width() {
+                    0 | 1 => GraphemeWidth::Half,
+                    _ => GraphemeWidth::Full,
+                },
+                replacement: Line::replace_character(g),
+            })
+            .collect()
     }
 
     /// Replaces a grapheme with another character for display if needed
@@ -115,5 +118,23 @@ impl Line {
                 GraphemeWidth::Full => 2,
             })
             .sum()
+    }
+
+    pub fn insert_char(&mut self, char: char, at: usize) {
+        let mut res = String::new();
+
+        for (i, fragment) in self.fragments.iter().enumerate() {
+            if at == i {
+                res.push(char);
+            }
+
+            res.push_str(&fragment.grapheme);
+        }
+
+        if at >= self.fragments.len() {
+            res.push(char);
+        }
+
+        self.fragments = Self::str_to_fragments(&res);
     }
 }
