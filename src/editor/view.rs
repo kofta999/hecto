@@ -30,6 +30,10 @@ impl View {
             EditorCommand::Move(direction) => self.move_text_location(&direction),
             EditorCommand::Resize(size) => self.resize(size),
             EditorCommand::Insert(char) => self.insert_char(char),
+            EditorCommand::Delete(Direction::Left) => self.delete_left(),
+            EditorCommand::Delete(Direction::Right) => self.delete_right(),
+            // Only supports left and right deletions for now
+            EditorCommand::Delete(_) => (),
             EditorCommand::Quit => {}
         }
     }
@@ -126,7 +130,7 @@ impl View {
             self.text_location.grapheme_index -= 1;
         } else if self.text_location.line_index > 0 {
             self.move_up(1);
-            self.move_to_start_of_line();
+            self.move_to_end_of_line();
         }
     }
 
@@ -238,9 +242,31 @@ impl View {
         let delta = new_len.saturating_sub(old_len);
 
         if delta > 0 {
-            self.move_right();
+            self.move_text_location(&Direction::Right);
         }
 
+        self.needs_redraw = true;
+    }
+
+    fn delete_left(&mut self) {
+        self.move_text_location(&Direction::Left);
+
+        if self.text_location.grapheme_index == 0 && self.text_location.line_index == 0 {
+            return;
+        }
+
+        self.buffer.delete(self.text_location);
+        self.needs_redraw = true;
+    }
+
+    fn delete_right(&mut self) {
+        if self.text_location.grapheme_index == self.get_line_width(self.text_location.line_index)
+            && self.text_location.line_index == self.buffer.height()
+        {
+            return;
+        }
+
+        self.buffer.delete(self.text_location);
         self.needs_redraw = true;
     }
 }
