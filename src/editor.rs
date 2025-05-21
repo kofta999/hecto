@@ -1,17 +1,19 @@
 mod editorcommand;
+mod statusbar;
 mod terminal;
 mod view;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 use editorcommand::EditorCommand;
+use statusbar::{STATUSBAR_HEIGHT, StatusBar};
 use terminal::Terminal;
 use view::View;
 
 type Result<T> = std::result::Result<T, std::io::Error>;
 
-#[derive(Default)]
 pub struct Editor {
     should_quit: bool,
     view: View,
+    statusbar: StatusBar,
 }
 
 impl Editor {
@@ -24,7 +26,7 @@ impl Editor {
 
         Terminal::initialize()?;
 
-        let mut view = View::default();
+        let mut view = View::new(STATUSBAR_HEIGHT.into());
 
         if let Some(file) = filename {
             view.load(file);
@@ -35,11 +37,14 @@ impl Editor {
         Ok(Self {
             view,
             should_quit: false,
+            statusbar: StatusBar::new(1),
         })
     }
 
     pub fn run(&mut self) {
         loop {
+            let file_info = self.view.get_file_info();
+            self.statusbar.update_info(file_info);
             self.refresh_screen();
             if self.should_quit {
                 break;
@@ -73,6 +78,9 @@ impl Editor {
                     self.should_quit = true;
                 } else {
                     self.view.handle_command(command);
+                    if let EditorCommand::Resize(size) = command {
+                        self.statusbar.resize(size);
+                    }
                 }
             }
         } else {
@@ -86,6 +94,7 @@ impl Editor {
     fn refresh_screen(&mut self) {
         let _ = Terminal::hide_caret();
         self.view.render();
+        self.statusbar.render();
         let _ = Terminal::move_caret_to(&self.view.caret_position());
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();

@@ -2,11 +2,13 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use super::terminal::Size;
 
+#[derive(Clone, Copy)]
 pub enum InsertionType {
     Char(char),
     Newline,
 }
 
+#[derive(Clone, Copy)]
 pub enum Direction {
     Up,
     Down,
@@ -18,6 +20,7 @@ pub enum Direction {
     RightSide,
 }
 
+#[derive(Clone, Copy)]
 pub enum EditorCommand {
     Move(Direction),
     Resize(Size),

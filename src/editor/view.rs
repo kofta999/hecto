@@ -1,5 +1,6 @@
 use super::{
     editorcommand::{Direction, EditorCommand, InsertionType},
+    statusbar::FileInfo,
     terminal::{Position, Size, Terminal},
 };
 use buffer::Buffer;
@@ -10,12 +11,13 @@ mod line;
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Location {
     pub grapheme_index: usize,
     pub line_index: usize,
 }
 
+#[derive(Default)]
 pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
@@ -25,9 +27,24 @@ pub struct View {
 }
 
 impl View {
+    pub fn new(margin_bottom: usize) -> Self {
+        let terminal_size = Terminal::size().unwrap_or_default();
+
+        Self {
+            buffer: Buffer::default(),
+            needs_redraw: true,
+            size: Size {
+                height: terminal_size.height.saturating_sub(margin_bottom),
+                width: terminal_size.width,
+            },
+            text_location: Location::default(),
+            scroll_offset: Position::default(),
+        }
+    }
+
     pub fn handle_command(&mut self, command: EditorCommand) {
         match command {
-            EditorCommand::Move(direction) => self.move_text_location(&direction),
+            EditorCommand::Move(direction) => self.move_text_location(direction),
             EditorCommand::Resize(size) => self.resize(size),
             EditorCommand::Insert(InsertionType::Char(char)) => self.insert_char(char),
             EditorCommand::Insert(InsertionType::Newline) => self.insert_newline(),
@@ -46,7 +63,7 @@ impl View {
         }
     }
 
-    pub fn render(&self) {
+    pub fn render(&mut self) {
         if !self.needs_redraw {
             return;
         }
@@ -74,6 +91,8 @@ impl View {
                 Self::render_line(current_row, "~");
             }
         }
+
+        self.needs_redraw = false;
     }
 
     pub fn caret_position(&self) -> Position {
@@ -81,7 +100,7 @@ impl View {
             .saturating_sub(self.scroll_offset)
     }
 
-    pub fn move_text_location(&mut self, direction: &Direction) {
+    pub fn move_text_location(&mut self, direction: Direction) {
         let Size { height, .. } = Terminal::size().unwrap_or_default();
 
         match direction {
@@ -97,6 +116,15 @@ impl View {
         }
 
         self.scroll_text_location_into_view();
+    }
+
+    pub fn get_file_info(&self) -> FileInfo {
+        FileInfo {
+            filename: self.buffer.filename.clone(),
+            line_count: self.buffer.height(),
+            text_location: self.text_location,
+            is_modified: self.buffer.dirty,
+        }
     }
 
     fn move_up(&mut self, step: usize) {
@@ -244,14 +272,14 @@ impl View {
         let delta = new_len.saturating_sub(old_len);
 
         if delta > 0 {
-            self.move_text_location(&Direction::Right);
+            self.move_text_location(Direction::Right);
         }
 
         self.needs_redraw = true;
     }
 
     fn delete_left(&mut self) {
-        self.move_text_location(&Direction::Left);
+        self.move_text_location(Direction::Left);
 
         if self.text_location.grapheme_index == 0 && self.text_location.line_index == 0 {
             return;
@@ -274,23 +302,11 @@ impl View {
 
     fn insert_newline(&mut self) {
         self.buffer.insert_newline(self.text_location);
-        self.move_text_location(&Direction::Right);
+        self.move_text_location(Direction::Right);
         self.needs_redraw = true;
     }
 
-    fn save_file(&self) {
+    fn save_file(&mut self) {
         let _ = self.buffer.save_to_disk();
-    }
-}
-
-impl Default for View {
-    fn default() -> Self {
-        Self {
-            buffer: Buffer::default(),
-            needs_redraw: true,
-            size: Terminal::size().unwrap_or_default(),
-            text_location: Location::default(),
-            scroll_offset: Position::default(),
-        }
     }
 }

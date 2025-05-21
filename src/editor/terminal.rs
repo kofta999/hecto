@@ -1,7 +1,7 @@
 use crossterm::{Command, cursor, queue, style, terminal};
 use std::io::{self, Error, Write};
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct Size {
     pub height: usize,
     pub width: usize,
