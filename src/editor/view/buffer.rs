@@ -1,9 +1,11 @@
 use super::{Location, line::Line};
-use std::fs;
+use std::fs::{self, File};
+use std::io::{Error, Write};
 
 #[derive(Default)]
 pub struct Buffer {
     pub lines: Vec<Line>,
+    pub filename: Option<String>,
 }
 
 /// Where the text resides
@@ -22,7 +24,10 @@ impl Buffer {
             lines.push(Line::from(line));
         }
 
-        Ok(Self { lines })
+        Ok(Self {
+            lines,
+            filename: Some(filename.to_string()),
+        })
     }
 
     /// Returns the length of buffer lines
@@ -67,5 +72,17 @@ impl Buffer {
             let new = line.split(at.grapheme_index);
             self.lines.insert(at.line_index.saturating_add(1), new);
         }
+    }
+
+    pub fn save_to_disk(&self) -> Result<(), Error> {
+        if let Some(filename) = &self.filename {
+            let mut file = File::create(filename)?;
+
+            for line in &self.lines {
+                writeln!(file, "{line}")?;
+            }
+        }
+
+        Ok(())
     }
 }

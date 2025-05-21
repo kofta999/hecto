@@ -35,6 +35,7 @@ impl View {
             EditorCommand::Delete(Direction::Right) => self.delete_right(),
             // Only supports left and right deletions for now
             EditorCommand::Delete(_) => (),
+            EditorCommand::Save => self.save_file(),
             EditorCommand::Quit => {}
         }
     }
@@ -275,6 +276,10 @@ impl View {
         self.buffer.insert_newline(self.text_location);
         self.move_text_location(&Direction::Right);
         self.needs_redraw = true;
+    }
+
+    fn save_file(&self) {
+        let _ = self.buffer.save_to_disk();
     }
 }
 

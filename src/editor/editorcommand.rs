@@ -24,6 +24,7 @@ pub enum EditorCommand {
     Quit,
     Insert(InsertionType),
     Delete(Direction),
+    Save,
 }
 
 impl TryFrom<Event> for EditorCommand {
@@ -61,6 +62,9 @@ impl TryFrom<Event> for EditorCommand {
                     // Deletion
                     (KeyCode::Backspace, _) => Ok(Self::Delete(Direction::Left)),
                     (KeyCode::Delete, _) => Ok(Self::Delete(Direction::Right)),
+
+                    // Saving
+                    (KeyCode::Char('s'), KeyModifiers::CONTROL) => Ok(Self::Save),
 
                     _ => Err(format!("KeyCode not supported: {code:?}")),
                 }
