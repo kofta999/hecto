@@ -1,12 +1,18 @@
 mod editorcommand;
 mod statusbar;
 mod terminal;
+mod documentstatus;
+mod fileinfo;
 mod view;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 use editorcommand::EditorCommand;
-use statusbar::{STATUSBAR_HEIGHT, StatusBar};
+use statusbar::StatusBar;
 use terminal::Terminal;
 use view::View;
+
+pub const NAME: &str = env!("CARGO_PKG_NAME");
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const STATUSBAR_HEIGHT: u8 = 2;
 
 type Result<T> = std::result::Result<T, std::io::Error>;
 
@@ -14,6 +20,7 @@ pub struct Editor {
     should_quit: bool,
     view: View,
     statusbar: StatusBar,
+    title: String,
 }
 
 impl Editor {
@@ -25,26 +32,39 @@ impl Editor {
         }));
 
         Terminal::initialize()?;
-
         let mut view = View::new(STATUSBAR_HEIGHT.into());
-
         if let Some(file) = filename {
             view.load(file);
         }
 
-        // Note, using Default::default() here breaks raw mode
-        // no questions asked
-        Ok(Self {
+        let mut editor = Self {
             view,
             should_quit: false,
             statusbar: StatusBar::new(1),
-        })
+            title: String::new(),
+        };
+
+        editor.refresh_status();
+
+        // Note, using Default::default() here breaks raw mode
+        // no questions asked
+        Ok(editor)
+    }
+
+    pub fn refresh_status(&mut self) {
+        let status = self.view.get_status();
+        let title = format!("{} - {NAME}", status.filename);
+        self.statusbar.update_status(status);
+
+        if title != self.title && matches!(Terminal::set_title(&title), Ok(())) {
+            self.title = title;
+        }
     }
 
     pub fn run(&mut self) {
         loop {
-            let file_info = self.view.get_file_info();
-            self.statusbar.update_info(file_info);
+            let file_info = self.view.get_status();
+            self.statusbar.update_status(file_info);
             self.refresh_screen();
             if self.should_quit {
                 break;

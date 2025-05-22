@@ -1,15 +1,13 @@
 use super::{
+    NAME, VERSION,
+    documentstatus::DocumentStatus,
     editorcommand::{Direction, EditorCommand, InsertionType},
-    statusbar::FileInfo,
     terminal::{Position, Size, Terminal},
 };
 use buffer::Buffer;
 use line::Line;
 mod buffer;
 mod line;
-
-const NAME: &str = env!("CARGO_PKG_NAME");
-const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Location {
@@ -22,6 +20,7 @@ pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     size: Size,
+    margin_bottom: usize,
     text_location: Location,
     scroll_offset: Position,
 }
@@ -37,6 +36,7 @@ impl View {
                 height: terminal_size.height.saturating_sub(margin_bottom),
                 width: terminal_size.width,
             },
+            margin_bottom,
             text_location: Location::default(),
             scroll_offset: Position::default(),
         }
@@ -64,7 +64,7 @@ impl View {
     }
 
     pub fn render(&mut self) {
-        if !self.needs_redraw {
+        if !self.needs_redraw || self.size.height == 0 {
             return;
         }
 
@@ -118,9 +118,9 @@ impl View {
         self.scroll_text_location_into_view();
     }
 
-    pub fn get_file_info(&self) -> FileInfo {
-        FileInfo {
-            filename: self.buffer.filename.clone(),
+    pub fn get_status(&self) -> DocumentStatus {
+        DocumentStatus {
+            filename: format!("{}", self.buffer.file_info),
             line_count: self.buffer.height(),
             text_location: self.text_location,
             is_modified: self.buffer.dirty,
@@ -183,7 +183,11 @@ impl View {
     }
 
     fn resize(&mut self, to: Size) {
-        self.size = to;
+        self.size = Size {
+            width: to.width,
+            height: to.height.saturating_sub(self.margin_bottom),
+        };
+        self.scroll_text_location_into_view();
         self.needs_redraw = true;
     }
 
@@ -249,19 +253,15 @@ impl View {
             return String::new();
         }
 
-        let mut welcome_message = format!("{NAME} editor -- Version {VERSION}");
+        let welcome_message = format!("{NAME} editor -- Version {VERSION}");
         let len = welcome_message.len();
+        let remaining_width = width.saturating_sub(1);
 
-        if width <= len {
+        if remaining_width <= len {
             return String::from("~");
         }
 
-        #[allow(clippy::integer_division)]
-        let padding = (width.saturating_sub(len).saturating_sub(1)) / 2;
-        let full_message = format!("~{}{}", " ".repeat(padding), welcome_message);
-        welcome_message.truncate(width);
-
-        full_message
+        format!("{:<1}{:^remaining_width$}", "~", welcome_message)
     }
 
     fn insert_char(&mut self, char: char) {

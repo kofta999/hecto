@@ -1,3 +1,5 @@
+use crate::editor::fileinfo::FileInfo;
+
 use super::{Location, line::Line};
 use std::fs::{self, File};
 use std::io::{Error, Write};
@@ -5,7 +7,7 @@ use std::io::{Error, Write};
 #[derive(Default)]
 pub struct Buffer {
     pub lines: Vec<Line>,
-    pub filename: Option<String>,
+    pub file_info: FileInfo,
     pub dirty: bool,
 }
 
@@ -27,7 +29,7 @@ impl Buffer {
 
         Ok(Self {
             lines,
-            filename: Some(filename.to_string()),
+            file_info: FileInfo::from(filename),
             dirty: false,
         })
     }
@@ -83,8 +85,8 @@ impl Buffer {
     }
 
     pub fn save_to_disk(&mut self) -> Result<(), Error> {
-        if let Some(filename) = &self.filename {
-            let mut file = File::create(filename)?;
+        if let Some(path) = &self.file_info.path {
+            let mut file = File::create(path)?;
 
             for line in &self.lines {
                 writeln!(file, "{line}")?;
