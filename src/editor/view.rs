@@ -6,6 +6,7 @@ use super::{
 };
 use buffer::Buffer;
 use line::Line;
+use log::info;
 mod buffer;
 mod line;
 
@@ -68,10 +69,12 @@ impl View {
             return;
         }
 
-        let Size { height, width } = Terminal::size().unwrap_or_default();
+        let Size { height, width } = self.size;
         if height == 0 || width == 0 {
             return;
         }
+
+        info!("{height}");
 
         // Idc if the message wasn't 100% centered
         #[allow(clippy::integer_division)]
