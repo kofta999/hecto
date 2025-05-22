@@ -1,26 +1,32 @@
+mod documentstatus;
 mod editorcommand;
+mod fileinfo;
+mod messagebar;
 mod statusbar;
 mod terminal;
-mod documentstatus;
-mod fileinfo;
+mod uicomponent;
 mod view;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 use editorcommand::EditorCommand;
+use messagebar::MessageBar;
 use statusbar::StatusBar;
-use terminal::Terminal;
+use terminal::{Size, Terminal};
+use uicomponent::UIComponent;
 use view::View;
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const STATUSBAR_HEIGHT: u8 = 2;
 
 type Result<T> = std::result::Result<T, std::io::Error>;
 
+#[derive(Default)]
 pub struct Editor {
     should_quit: bool,
     view: View,
-    statusbar: StatusBar,
+    status_bar: StatusBar,
+    message_bar: MessageBar,
     title: String,
+    terminal_size: Size,
 }
 
 impl Editor {
@@ -32,29 +38,45 @@ impl Editor {
         }));
 
         Terminal::initialize()?;
-        let mut view = View::new(STATUSBAR_HEIGHT.into());
+
+        let mut editor = Self::default();
+        let size = Terminal::size().unwrap_or_default();
+
         if let Some(file) = filename {
-            view.load(file);
+            editor.view.load(file);
         }
 
-        let mut editor = Self {
-            view,
-            should_quit: false,
-            statusbar: StatusBar::new(1),
-            title: String::new(),
-        };
+        editor
+            .message_bar
+            .update_message("HELP: Ctrl-S = save | Ctrl-X = quit".to_string());
 
+        editor.resize(size);
         editor.refresh_status();
 
-        // Note, using Default::default() here breaks raw mode
-        // no questions asked
         Ok(editor)
+    }
+
+    pub fn resize(&mut self, to: Size) {
+        self.terminal_size = to;
+        self.view.resize(Size {
+            height: to.height.saturating_sub(2),
+            width: to.width,
+        });
+
+        self.status_bar.resize(Size {
+            height: 1,
+            width: to.width,
+        });
+        self.message_bar.resize(Size {
+            height: 1,
+            width: to.width,
+        });
     }
 
     pub fn refresh_status(&mut self) {
         let status = self.view.get_status();
         let title = format!("{} - {NAME}", status.filename);
-        self.statusbar.update_status(status);
+        self.status_bar.update_status(status);
 
         if title != self.title && matches!(Terminal::set_title(&title), Ok(())) {
             self.title = title;
@@ -64,7 +86,7 @@ impl Editor {
     pub fn run(&mut self) {
         loop {
             let file_info = self.view.get_status();
-            self.statusbar.update_status(file_info);
+            self.status_bar.update_status(file_info);
             self.refresh_screen();
             if self.should_quit {
                 break;
@@ -96,11 +118,10 @@ impl Editor {
             if let Ok(command) = EditorCommand::try_from(event) {
                 if matches!(command, EditorCommand::Quit) {
                     self.should_quit = true;
+                } else if let EditorCommand::Resize(size) = command {
+                    self.resize(size);
                 } else {
                     self.view.handle_command(command);
-                    if let EditorCommand::Resize(size) = command {
-                        self.statusbar.resize(size);
-                    }
                 }
             }
         } else {
@@ -112,9 +133,23 @@ impl Editor {
     }
 
     fn refresh_screen(&mut self) {
+        if self.terminal_size.height == 0 || self.terminal_size.width == 0 {
+            return;
+        }
         let _ = Terminal::hide_caret();
-        self.view.render();
-        self.statusbar.render();
+
+        self.message_bar
+            .render(self.terminal_size.height.saturating_sub(1));
+
+        if self.terminal_size.height > 1 {
+            self.status_bar
+                .render(self.terminal_size.height.saturating_sub(2));
+        }
+
+        if self.terminal_size.height > 2 {
+            self.view.render(0);
+        }
+
         let _ = Terminal::move_caret_to(&self.view.caret_position());
         let _ = Terminal::show_caret();
         let _ = Terminal::execute();

@@ -5,7 +5,7 @@ use crossterm::{
 };
 use std::io::{self, Error, Write};
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub struct Size {
     pub height: usize,
     pub width: usize,
