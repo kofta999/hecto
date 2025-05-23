@@ -1,14 +1,13 @@
-use std::io::Error;
-
 use super::{
     NAME, VERSION,
+    command::{Edit, Move},
     documentstatus::DocumentStatus,
-    editorcommand::{Direction, EditorCommand, InsertionType},
     terminal::{Position, Size, Terminal},
     uicomponent::UIComponent,
 };
 use buffer::Buffer;
 use line::Line;
+use std::io::Error;
 mod buffer;
 mod line;
 
@@ -28,49 +27,44 @@ pub struct View {
 }
 
 impl View {
-    pub fn handle_command(&mut self, command: EditorCommand) {
+    pub fn handle_edit_command(&mut self, command: Edit) {
         match command {
-            EditorCommand::Move(direction) => self.move_text_location(direction),
-            EditorCommand::Insert(InsertionType::Char(char)) => self.insert_char(char),
-            EditorCommand::Insert(InsertionType::Newline) => self.insert_newline(),
-            EditorCommand::Delete(Direction::Left) => self.delete_left(),
-            EditorCommand::Delete(Direction::Right) => self.delete_right(),
-            // Only supports left and right deletions for now
-            EditorCommand::Delete(_) => (),
-            EditorCommand::Save => self.save_file(),
-            // Ignored
-            EditorCommand::Resize(_) | EditorCommand::Quit => {}
+            Edit::Insert(char) => self.insert_char(char),
+            Edit::InsertNewLine => self.insert_newline(),
+            Edit::DeleteBackward => self.delete_backward(),
+            Edit::Delete => self.delete(),
         }
     }
 
-    pub fn load(&mut self, filename: &str) {
-        if let Ok(buffer) = Buffer::load(filename) {
-            self.buffer = buffer;
-            self.set_needs_redraw(true);
+    pub fn handle_move_command(&mut self, command: Move) {
+        let Size { height, .. } = self.size;
+        // This match moves the positon, but does not check for all boundaries.
+        // The final boundarline checking happens after the match statement.
+
+        match command {
+            Move::Up => self.move_up(1),
+            Move::Down => self.move_down(1),
+            Move::Left => self.move_left(),
+            Move::Right => self.move_right(),
+            Move::PageUp => self.move_up(height.saturating_sub(1)),
+            Move::PageDown => self.move_down(height.saturating_sub(1)),
+            Move::StartOfLine => self.move_to_start_of_line(),
+            Move::EndOfLine => self.move_to_end_of_line(),
         }
+
+        self.scroll_text_location_into_view();
+    }
+
+    pub fn load(&mut self, filename: &str) -> Result<(), Error> {
+        self.buffer = Buffer::load(filename)?;
+        self.set_needs_redraw(true);
+
+        Ok(())
     }
 
     pub fn caret_position(&self) -> Position {
         self.text_location_into_position()
             .saturating_sub(self.scroll_offset)
-    }
-
-    pub fn move_text_location(&mut self, direction: Direction) {
-        let Size { height, .. } = Terminal::size().unwrap_or_default();
-
-        match direction {
-            Direction::Up => self.move_up(1),
-            Direction::Down => self.move_down(1),
-            Direction::Left => self.move_left(),
-            Direction::Right => self.move_right(),
-
-            Direction::PageUp => self.move_up(height.saturating_sub(1)),
-            Direction::PageDown => self.move_down(height.saturating_sub(1)),
-            Direction::LeftSide => self.move_to_start_of_line(),
-            Direction::RightSide => self.move_to_end_of_line(),
-        }
-
-        self.scroll_text_location_into_view();
     }
 
     pub fn get_status(&self) -> DocumentStatus {
@@ -221,14 +215,14 @@ impl View {
         let delta = new_len.saturating_sub(old_len);
 
         if delta > 0 {
-            self.move_text_location(Direction::Right);
+            self.handle_move_command(Move::Right);
         }
 
         self.set_needs_redraw(true);
     }
 
-    fn delete_left(&mut self) {
-        self.move_text_location(Direction::Left);
+    fn delete_backward(&mut self) {
+        self.handle_move_command(Move::Left);
 
         if self.text_location.grapheme_index == 0 && self.text_location.line_index == 0 {
             return;
@@ -238,7 +232,7 @@ impl View {
         self.set_needs_redraw(true);
     }
 
-    fn delete_right(&mut self) {
+    fn delete(&mut self) {
         if self.text_location.grapheme_index == self.get_line_width(self.text_location.line_index)
             && self.text_location.line_index == self.buffer.height()
         {
@@ -251,12 +245,12 @@ impl View {
 
     fn insert_newline(&mut self) {
         self.buffer.insert_newline(self.text_location);
-        self.move_text_location(Direction::Right);
+        self.handle_move_command(Move::Right);
         self.set_needs_redraw(true);
     }
 
-    fn save_file(&mut self) {
-        let _ = self.buffer.save_to_disk();
+    pub fn save_file(&mut self) -> Result<(), Error> {
+        self.buffer.save_to_disk()
     }
 }
 

@@ -37,10 +37,10 @@ pub struct MessageBar {
 }
 
 impl MessageBar {
-    pub fn update_message(&mut self, to: String) {
+    pub fn update_message(&mut self, to: &str) {
         if to != self.current_message.content {
             self.current_message = Message {
-                content: to,
+                content: to.to_string(),
                 time: Instant::now(),
             };
             self.cleared_after_expiry = false;

@@ -1,13 +1,13 @@
+mod command;
 mod documentstatus;
-mod editorcommand;
 mod fileinfo;
 mod messagebar;
 mod statusbar;
 mod terminal;
 mod uicomponent;
 mod view;
+use command::{Command, System};
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
-use editorcommand::EditorCommand;
 use messagebar::MessageBar;
 use statusbar::StatusBar;
 use terminal::{Size, Terminal};
@@ -16,6 +16,7 @@ use view::View;
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+const QUIT_TIMES: u8 = 3;
 
 type Result<T> = std::result::Result<T, std::io::Error>;
 
@@ -27,6 +28,7 @@ pub struct Editor {
     message_bar: MessageBar,
     title: String,
     terminal_size: Size,
+    quit_times: u8,
 }
 
 impl Editor {
@@ -39,18 +41,21 @@ impl Editor {
 
         Terminal::initialize()?;
 
-        let mut editor = Self::default();
         let size = Terminal::size().unwrap_or_default();
-
-        if let Some(file) = filename {
-            editor.view.load(file);
-        }
-
+        let mut editor = Self::default();
+        editor.resize(size);
         editor
             .message_bar
-            .update_message("HELP: Ctrl-S = save | Ctrl-X = quit".to_string());
+            .update_message("HELP: Ctrl-S = save | Ctrl-X = quit");
 
-        editor.resize(size);
+        if let Some(file) = filename {
+            if editor.view.load(file).is_err() {
+                editor
+                    .message_bar
+                    .update_message(&format!("ERR: Could not open file: {file}"));
+            }
+        }
+
         editor.refresh_status();
 
         Ok(editor)
@@ -104,9 +109,6 @@ impl Editor {
         }
     }
 
-    // There's no big performance overhead if I passed by value here
-    // and this reduces function complexity
-    #[allow(clippy::needless_pass_by_value)]
     fn evaluate_event(&mut self, event: Event) {
         let should_process = match &event {
             Event::Key(KeyEvent { kind, .. }) => kind == &KeyEventKind::Press,
@@ -115,20 +117,53 @@ impl Editor {
         };
 
         if should_process {
-            if let Ok(command) = EditorCommand::try_from(event) {
-                if matches!(command, EditorCommand::Quit) {
-                    self.should_quit = true;
-                } else if let EditorCommand::Resize(size) = command {
-                    self.resize(size);
-                } else {
-                    self.view.handle_command(command);
-                }
+            if let Ok(command) = Command::try_from(event) {
+                self.process_command(command);
             }
-        } else {
-            #[cfg(debug_assertions)]
-            {
-                panic!("Received and discarded unsupported or non-press event.");
-            }
+        }
+    }
+
+    #[allow(clippy::needless_pass_by_value)]
+    fn process_command(&mut self, command: Command) {
+        match command {
+            Command::System(System::Quit) => self.handle_quit(),
+            Command::System(System::Resize(size)) => self.resize(size),
+            _ => self.reset_quit_times(),
+        }
+
+        match command {
+            Command::System(System::Quit | System::Resize(_)) => {}
+            Command::System(System::Save) => self.handle_save(),
+            Command::Edit(edit_command) => self.view.handle_edit_command(edit_command),
+            Command::Move(move_command) => self.view.handle_move_command(move_command),
+        }
+    }
+
+    fn handle_save(&mut self) {
+        match self.view.save_file() {
+            Ok(()) => self.message_bar.update_message("File saved successfully."),
+            Err(_) => self.message_bar.update_message("Error writing file!"),
+        }
+    }
+
+    // clippy::arithmetic_side_effects: quit_times is guaranteed to be between 0 and QUIT_TIMES
+    #[allow(clippy::arithmetic_side_effects)]
+    fn handle_quit(&mut self) {
+        if !self.view.get_status().is_modified || self.quit_times + 1 == QUIT_TIMES {
+            self.should_quit = true;
+        } else if self.view.get_status().is_modified {
+            self.message_bar.update_message(&format!(
+                "WARNING! File has unsaved changes. Press Ctrl-Q {} more times to quit.",
+                QUIT_TIMES - self.quit_times - 1
+            ));
+            self.quit_times += 1;
+        }
+    }
+
+    fn reset_quit_times(&mut self) {
+        if self.quit_times > 0 {
+            self.quit_times = 0;
+            self.message_bar.update_message("");
         }
     }
 
