@@ -9,7 +9,6 @@ use super::{
 };
 use buffer::Buffer;
 use line::Line;
-use log::info;
 mod buffer;
 mod line;
 
@@ -47,7 +46,7 @@ impl View {
     pub fn load(&mut self, filename: &str) {
         if let Ok(buffer) = Buffer::load(filename) {
             self.buffer = buffer;
-            self.mark_redraw(true);
+            self.set_needs_redraw(true);
         }
     }
 
@@ -159,7 +158,7 @@ impl View {
         };
 
         if offset_changed {
-            self.mark_redraw(true);
+            self.set_needs_redraw(true);
         }
     }
 
@@ -177,7 +176,7 @@ impl View {
         };
 
         if offset_changed {
-            self.mark_redraw(true);
+            self.set_needs_redraw(true);
         }
     }
 
@@ -225,7 +224,7 @@ impl View {
             self.move_text_location(Direction::Right);
         }
 
-        self.mark_redraw(true);
+        self.set_needs_redraw(true);
     }
 
     fn delete_left(&mut self) {
@@ -236,7 +235,7 @@ impl View {
         }
 
         self.buffer.delete(self.text_location);
-        self.mark_redraw(true);
+        self.set_needs_redraw(true);
     }
 
     fn delete_right(&mut self) {
@@ -247,13 +246,13 @@ impl View {
         }
 
         self.buffer.delete(self.text_location);
-        self.mark_redraw(true);
+        self.set_needs_redraw(true);
     }
 
     fn insert_newline(&mut self) {
         self.buffer.insert_newline(self.text_location);
         self.move_text_location(Direction::Right);
-        self.mark_redraw(true);
+        self.set_needs_redraw(true);
     }
 
     fn save_file(&mut self) {
@@ -276,7 +275,6 @@ impl UIComponent for View {
                 .saturating_sub(origin_y)
                 .saturating_add(scroll_top);
 
-            info!("here, {:?}", self.buffer.file_info.path);
             if let Some(line) = self.buffer.lines.get(line_idx) {
                 let left = self.scroll_offset.col;
                 let right = self.scroll_offset.col.saturating_add(width);
@@ -298,7 +296,7 @@ impl UIComponent for View {
         self.scroll_text_location_into_view();
     }
 
-    fn mark_redraw(&mut self, value: bool) {
+    fn set_needs_redraw(&mut self, value: bool) {
         self.needs_redraw = value;
     }
 
