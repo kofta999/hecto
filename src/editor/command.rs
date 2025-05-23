@@ -23,10 +23,10 @@ impl TryFrom<KeyEvent> for Move {
 
         if modifiers == KeyModifiers::NONE {
             match code {
-                KeyCode::Char('h') => Ok(Self::Left),
-                KeyCode::Char('j') => Ok(Self::Down),
-                KeyCode::Char('k') => Ok(Self::Up),
-                KeyCode::Char('l') => Ok(Self::Right),
+                KeyCode::Char('h') | KeyCode::Left => Ok(Self::Left),
+                KeyCode::Char('j') | KeyCode::Down => Ok(Self::Down),
+                KeyCode::Char('k') | KeyCode::Up => Ok(Self::Up),
+                KeyCode::Char('l') | KeyCode::Right => Ok(Self::Right),
 
                 KeyCode::PageUp => Ok(Self::PageUp),
                 KeyCode::PageDown => Ok(Self::PageDown),
