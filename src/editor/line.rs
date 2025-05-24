@@ -26,37 +26,45 @@ struct TextFragment {
     grapheme: String,
     rendered_width: GraphemeWidth,
     replacement: Option<char>,
+    start_byte_idx: usize,
 }
 
 #[derive(Debug, Default)]
 /// A line of text fragments
 pub struct Line {
     fragments: Vec<TextFragment>,
+    string: String,
 }
 
 impl Line {
     pub fn from(line_str: &str) -> Self {
         Self {
             fragments: Self::str_to_fragments(line_str),
+            string: line_str.to_string(),
         }
     }
 
     fn str_to_fragments(line_str: &str) -> Vec<TextFragment> {
         line_str
-            .graphemes(true)
-            .map(|g| TextFragment {
+            .grapheme_indices(true)
+            .map(|(idx, g)| TextFragment {
                 grapheme: g.to_string(),
                 rendered_width: match g.width() {
                     0 | 1 => GraphemeWidth::Half,
                     _ => GraphemeWidth::Full,
                 },
-                replacement: Line::replace_character(g),
+                replacement: Line::get_replacement_character(g),
+                start_byte_idx: idx,
             })
             .collect()
     }
 
+    fn rebuild_fragments(&mut self) {
+        self.fragments = Self::str_to_fragments(&self.string);
+    }
+
     /// Replaces a grapheme with another character for display if needed
-    fn replace_character(g: &str) -> Option<char> {
+    fn get_replacement_character(g: &str) -> Option<char> {
         match g {
             // TODO: Fix
             "\t" => Some(' '),
@@ -126,52 +134,40 @@ impl Line {
 
     /// Inserts a character at a position
     pub fn insert_char(&mut self, char: char, at: usize) {
-        let mut res = String::new();
-
-        for (i, fragment) in self.fragments.iter().enumerate() {
-            if at == i {
-                res.push(char);
-            }
-
-            res.push_str(&fragment.grapheme);
+        if let Some(fragment) = self.fragments.get(at) {
+            self.string.insert(fragment.start_byte_idx, char);
+        } else {
+            self.string.push(char);
         }
 
-        if at >= self.fragments.len() {
-            res.push(char);
-        }
-
-        self.fragments = Self::str_to_fragments(&res);
+        self.rebuild_fragments();
     }
 
     /// Deletes a character at a position
     pub fn delete(&mut self, at: usize) {
-        let mut res = String::new();
+        if let Some(fragment) = self.fragments.get(at) {
+            let start = fragment.start_byte_idx;
+            let end = start.saturating_add(fragment.grapheme.len());
 
-        for (i, fragment) in self.fragments.iter().enumerate() {
-            if at != i {
-                res.push_str(&fragment.grapheme);
-            }
+            self.string.drain(start..end);
+            self.rebuild_fragments();
         }
-
-        self.fragments = Self::str_to_fragments(&res);
     }
 
     /// Appends a Line to self
     pub fn append(&mut self, other: &Self) {
-        let mut concat = self.to_string();
-        concat.push_str(&other.to_string());
-
-        self.fragments = Self::str_to_fragments(&concat);
+        self.string.push_str(&other.string);
+        self.rebuild_fragments();
     }
 
     /// Splits Line into two
     pub fn split(&mut self, at: usize) -> Self {
-        if at > self.fragments.len() {
-            return Self::default();
-        }
-
-        Self {
-            fragments: self.fragments.split_off(at),
+        if let Some(fragment) = self.fragments.get(at) {
+            let remainder = self.string.split_off(fragment.start_byte_idx);
+            self.rebuild_fragments();
+            Self::from(&remainder)
+        } else {
+            Self::default()
         }
     }
 
@@ -190,12 +186,6 @@ impl Line {
 
 impl fmt::Display for Line {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let result: String = self
-            .fragments
-            .iter()
-            .map(|fragment| fragment.grapheme.clone())
-            .collect();
-
-        write!(f, "{result}")
+        write!(f, "{}", self.string)
     }
 }

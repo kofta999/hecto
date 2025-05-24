@@ -1,4 +1,6 @@
-use super::{command::Edit, line::Line, size::Size, terminal::Terminal, uicomponent::UIComponent};
+use super::{
+    PromptType, command::Edit, line::Line, size::Size, terminal::Terminal, uicomponent::UIComponent,
+};
 
 #[derive(Default)]
 pub struct CommandBar {
@@ -6,11 +8,29 @@ pub struct CommandBar {
     prompt: String,
     value: Line,
     size: Size,
+    prompt_type: PromptType,
 }
 
 impl CommandBar {
-    pub fn set_prompt(&mut self, to: &str) {
-        self.prompt = to.into();
+    pub fn set_prompt(&mut self, prompt_type: PromptType) {
+        self.clear_value();
+        self.prompt_type = prompt_type;
+        self.prompt = match prompt_type {
+            PromptType::Save => "Save as: ",
+            PromptType::Search => "Search: ",
+            PromptType::None => "",
+        }
+        .into();
+
+        self.set_needs_redraw(true);
+    }
+
+    pub fn get_prompt_type(&self) -> PromptType {
+        self.prompt_type
+    }
+
+    pub fn in_prompt(&self) -> bool {
+        !self.prompt_type.is_none()
     }
 
     pub fn handle_edit_command(&mut self, command: Edit) {
@@ -32,6 +52,11 @@ impl CommandBar {
 
     pub fn value(&self) -> String {
         self.value.to_string()
+    }
+
+    fn clear_value(&mut self) {
+        self.value = Line::default();
+        self.set_needs_redraw(true);
     }
 }
 
