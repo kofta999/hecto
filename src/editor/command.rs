@@ -1,5 +1,6 @@
-use super::terminal::Size;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+
+use super::size::Size;
 
 #[derive(Clone, Copy)]
 pub enum Move {
@@ -61,8 +62,8 @@ impl TryFrom<KeyEvent> for Edit {
             (KeyCode::Enter, _) => Ok(Self::InsertNewLine),
 
             // Deletion
-            (KeyCode::Backspace, _) => Ok(Self::Delete),
-            (KeyCode::Delete, _) => Ok(Self::DeleteBackward),
+            (KeyCode::Backspace, _) => Ok(Self::DeleteBackward),
+            (KeyCode::Delete, _) => Ok(Self::Delete),
 
             _ => Err(format!(
                 "Unsupported key code {:?} with modifiers {:?}",
@@ -77,6 +78,7 @@ pub enum System {
     Save,
     Resize(Size),
     Quit,
+    Dismiss,
 }
 
 impl TryFrom<KeyEvent> for System {
@@ -93,6 +95,8 @@ impl TryFrom<KeyEvent> for System {
                 KeyCode::Char('s') => Ok(Self::Save),
                 _ => Err(format!("Unsupported CONTROL+{code:?} combination")),
             }
+        } else if modifiers == KeyModifiers::NONE && matches!(code, KeyCode::Esc) {
+            Ok(Self::Dismiss)
         } else {
             Err(format!(
                 "Unsupported key code {code:?} or modifier {modifiers:?}"

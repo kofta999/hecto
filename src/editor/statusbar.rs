@@ -1,4 +1,4 @@
-use super::{documentstatus::DocumentStatus, terminal::Size, uicomponent::UIComponent};
+use super::{documentstatus::DocumentStatus, size::Size, uicomponent::UIComponent};
 use crate::editor::terminal::Terminal;
 use std::io::Error;
 
@@ -19,7 +19,7 @@ impl StatusBar {
 }
 
 impl UIComponent for StatusBar {
-    fn draw(&mut self, origin_y: usize) -> Result<(), Error> {
+    fn draw(&mut self, origin_row: usize) -> Result<(), Error> {
         let line_count = self.current_status.line_count_to_string();
         let modified_indicator = self.current_status.modified_indicator_to_string();
 
@@ -39,7 +39,7 @@ impl UIComponent for StatusBar {
             String::new()
         };
 
-        Terminal::print_inverted_row(origin_y, &to_print)
+        Terminal::print_inverted_row(origin_row, &to_print)
     }
 
     fn set_size(&mut self, to: Size) {

@@ -1,15 +1,18 @@
 use super::{
-    NAME, VERSION,
     command::{Edit, Move},
     documentstatus::DocumentStatus,
-    terminal::{Position, Size, Terminal},
+    line::Line,
+    position::Position,
+    size::Size,
+    terminal::Terminal,
     uicomponent::UIComponent,
 };
+use crate::editor::NAME;
+use crate::editor::VERSION;
 use buffer::Buffer;
-use line::Line;
+
 use std::io::Error;
 mod buffer;
-mod line;
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Location {
@@ -53,6 +56,10 @@ impl View {
         }
 
         self.scroll_text_location_into_view();
+    }
+
+    pub fn is_file_loaded(&self) -> bool {
+        self.buffer.is_file_loaded()
     }
 
     pub fn load(&mut self, filename: &str) -> Result<(), Error> {
@@ -249,24 +256,28 @@ impl View {
         self.set_needs_redraw(true);
     }
 
-    pub fn save_file(&mut self) -> Result<(), Error> {
-        self.buffer.save_to_disk()
+    pub fn save(&mut self) -> Result<(), Error> {
+        self.buffer.save()
+    }
+
+    pub fn save_as(&mut self, file_name: &str) -> Result<(), Error> {
+        self.buffer.save_as(file_name)
     }
 }
 
 impl UIComponent for View {
-    fn draw(&mut self, origin_y: usize) -> Result<(), Error> {
+    fn draw(&mut self, origin_row: usize) -> Result<(), Error> {
         let Size { height, width } = self.size;
 
         // Idc if the message wasn't 100% centered
         #[allow(clippy::integer_division)]
         let top_third = height / 3;
         let scroll_top = self.scroll_offset.row;
-        let end_y = origin_y.saturating_add(height);
+        let end_y = origin_row.saturating_add(height);
 
-        for current_row in origin_y..end_y {
+        for current_row in origin_row..end_y {
             let line_idx = current_row
-                .saturating_sub(origin_y)
+                .saturating_sub(origin_row)
                 .saturating_add(scroll_top);
 
             if let Some(line) = self.buffer.lines.get(line_idx) {

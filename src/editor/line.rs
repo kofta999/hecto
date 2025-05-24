@@ -174,6 +174,18 @@ impl Line {
             fragments: self.fragments.split_off(at),
         }
     }
+
+    pub fn append_char(&mut self, char: char) {
+        self.insert_char(char, self.grapheme_count());
+    }
+
+    pub fn delete_last(&mut self) {
+        self.delete(self.grapheme_count().saturating_sub(1));
+    }
+
+    pub fn width(&self) -> usize {
+        self.width_until(self.grapheme_count())
+    }
 }
 
 impl fmt::Display for Line {

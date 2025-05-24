@@ -1,13 +1,10 @@
-use super::{
-    terminal::{Size, Terminal},
-    uicomponent::UIComponent,
-};
+use super::{size::Size, terminal::Terminal, uicomponent::UIComponent};
 use std::{
     io::Error,
     time::{Duration, Instant},
 };
 
-const DEFUALT_DURATION: Duration = Duration::from_secs(2);
+const DEFAULT_DURATION: Duration = Duration::from_secs(2);
 
 pub struct Message {
     content: String,
@@ -16,7 +13,7 @@ pub struct Message {
 
 impl Message {
     pub fn is_expired(&self) -> bool {
-        Instant::now().duration_since(self.time) > DEFUALT_DURATION
+        Instant::now().duration_since(self.time) > DEFAULT_DURATION
     }
 }
 
