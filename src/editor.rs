@@ -52,6 +52,7 @@ pub struct Editor {
     title: String,
     terminal_size: Size,
     quit_times: u8,
+    prompt_type: PromptType,
 }
 
 impl Editor {
@@ -150,7 +151,7 @@ impl Editor {
             return;
         }
 
-        match self.command_bar.get_prompt_type() {
+        match self.prompt_type {
             PromptType::Search => self.process_command_during_search(command),
             PromptType::Save => self.process_command_during_save(command),
             PromptType::None => self.process_command_no_prompt(command),
@@ -178,7 +179,7 @@ impl Editor {
             Command::System(System::Quit | System::Resize(_) | System::Search | System::Save)
             | Command::Move(_) => {}
             Command::System(System::Dismiss) => {
-                self.command_bar.set_prompt(PromptType::None);
+                self.set_prompt(PromptType::None);
                 self.message_bar.update_message("Save aborted.");
             }
             Command::Edit(Edit::InsertNewLine) => {
@@ -194,29 +195,36 @@ impl Editor {
         match command {
             Command::System(System::Quit | System::Resize(_) | System::Search | System::Save)
             | Command::Move(_) => {}
-            Command::System(System::Dismiss) | Command::Edit(Edit::InsertNewLine) => {
-                self.command_bar.set_prompt(PromptType::None);
+            Command::Edit(Edit::InsertNewLine) => {
+                self.set_prompt(PromptType::None);
+                self.view.exit_search();
             }
-            Command::Edit(edit_command) => self.command_bar.handle_edit_command(edit_command),
+            Command::System(System::Dismiss) => {
+                self.set_prompt(PromptType::None);
+                self.view.dismiss_search();
+            }
+            Command::Edit(edit_command) => {
+                self.command_bar.handle_edit_command(edit_command);
+                self.view.search(&self.command_bar.value());
+            }
         }
     }
 
-    fn set_prompt(&mut self, command: PromptType) {
-        if matches!(command, PromptType::None) {
-            self.command_bar.set_prompt(PromptType::None);
-            self.message_bar.set_needs_redraw(true);
-            return;
+    fn set_prompt(&mut self, prompt_type: PromptType) {
+        match prompt_type {
+            PromptType::None => self.message_bar.set_needs_redraw(true), //Ensures the message bar is properly painted during the next redraw cycle
+            PromptType::Save => self.command_bar.set_prompt("Save as: "),
+            PromptType::Search => {
+                self.view.enter_search();
+                self.command_bar.set_prompt("Search (Esc to cancel): ");
+            }
         }
+        self.command_bar.clear_value();
+        self.prompt_type = prompt_type;
+    }
 
-        let mut command_bar = CommandBar::default();
-        command_bar.set_prompt(command);
-        command_bar.resize(Size {
-            height: 1,
-            width: self.terminal_size.width,
-        });
-        command_bar.set_needs_redraw(true);
-
-        self.command_bar = command_bar;
+    pub fn in_prompt(&self) -> bool {
+        !self.prompt_type.is_none()
     }
 
     fn handle_save_command(&mut self) {
@@ -268,7 +276,7 @@ impl Editor {
         let _ = Terminal::hide_caret();
         let bottom_bar_row = self.terminal_size.height.saturating_sub(1);
 
-        if self.command_bar.in_prompt() {
+        if self.in_prompt() {
             self.command_bar.render(bottom_bar_row);
         } else {
             self.message_bar.render(bottom_bar_row);
@@ -283,7 +291,7 @@ impl Editor {
             self.view.render(0);
         }
 
-        let new_caret_pos = if self.command_bar.in_prompt() {
+        let new_caret_pos = if self.in_prompt() {
             Position {
                 row: bottom_bar_row,
                 col: self.command_bar.caret_position_col(),

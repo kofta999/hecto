@@ -10,9 +10,12 @@ use super::{
 use crate::editor::NAME;
 use crate::editor::VERSION;
 use buffer::Buffer;
-
 use std::io::Error;
 mod buffer;
+
+pub struct SearchInfo {
+    prev_location: Location,
+}
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Location {
@@ -27,6 +30,7 @@ pub struct View {
     size: Size,
     text_location: Location,
     scroll_offset: Position,
+    search_info: Option<SearchInfo>,
 }
 
 impl View {
@@ -262,6 +266,35 @@ impl View {
 
     pub fn save_as(&mut self, file_name: &str) -> Result<(), Error> {
         self.buffer.save_as(file_name)
+    }
+
+    pub fn enter_search(&mut self) {
+        self.search_info = Some(SearchInfo {
+            prev_location: self.text_location,
+        });
+    }
+
+    pub fn exit_search(&mut self) {
+        self.search_info = None;
+    }
+
+    pub fn dismiss_search(&mut self) {
+        if let Some(search_info) = &self.search_info {
+            self.text_location = search_info.prev_location;
+            self.search_info = None;
+            self.scroll_text_location_into_view();
+        }
+    }
+
+    pub fn search(&mut self, query: &str) {
+        if query.is_empty() {
+            return;
+        }
+
+        if let Some(location) = self.buffer.find(query) {
+            self.text_location = location;
+            self.scroll_text_location_into_view();
+        }
     }
 }
 
