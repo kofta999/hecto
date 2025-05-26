@@ -10,7 +10,7 @@ mod statusbar;
 mod terminal;
 mod uicomponent;
 mod view;
-use command::{Command, Edit, System};
+use command::{Command, Edit, Move, System};
 use commandbar::CommandBar;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 use messagebar::MessageBar;
@@ -193,20 +193,23 @@ impl Editor {
 
     fn process_command_during_search(&mut self, command: Command) {
         match command {
-            Command::System(System::Quit | System::Resize(_) | System::Search | System::Save)
-            | Command::Move(_) => {}
-            Command::Edit(Edit::InsertNewLine) => {
-                self.set_prompt(PromptType::None);
-                self.view.exit_search();
-            }
             Command::System(System::Dismiss) => {
                 self.set_prompt(PromptType::None);
                 self.view.dismiss_search();
+            }
+            Command::Edit(Edit::InsertNewLine) => {
+                self.set_prompt(PromptType::None);
+                self.view.exit_search();
             }
             Command::Edit(edit_command) => {
                 self.command_bar.handle_edit_command(edit_command);
                 self.view.search(&self.command_bar.value());
             }
+            Command::Move(Move::Down | Move::Right) => {
+                self.view.search_next();
+            }
+            Command::System(System::Quit | System::Resize(_) | System::Search | System::Save)
+            | Command::Move(_) => {}
         }
     }
 
@@ -216,7 +219,8 @@ impl Editor {
             PromptType::Save => self.command_bar.set_prompt("Save as: "),
             PromptType::Search => {
                 self.view.enter_search();
-                self.command_bar.set_prompt("Search (Esc to cancel): ");
+                self.command_bar
+                    .set_prompt("Search (Esc to cancel, Arrows to navigate): ");
             }
         }
         self.command_bar.clear_value();

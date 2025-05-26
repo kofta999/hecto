@@ -1,9 +1,12 @@
 use std::{
     fmt::{self},
-    ops::Range,
+    ops::{Deref, Range},
 };
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
+
+type GraphemeIdx = usize;
+type ByteIdx = usize;
 
 #[derive(Debug, Clone, Copy)]
 enum GraphemeWidth {
@@ -26,7 +29,7 @@ struct TextFragment {
     grapheme: String,
     rendered_width: GraphemeWidth,
     replacement: Option<char>,
-    start_byte_idx: usize,
+    start_byte_idx: ByteIdx,
 }
 
 #[derive(Debug, Default)]
@@ -84,7 +87,7 @@ impl Line {
     }
 
     /// Gets the graphemes that can be displayed on screen
-    pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
+    pub fn get_visible_graphemes(&self, range: Range<GraphemeIdx>) -> String {
         if range.start >= range.end {
             return String::new();
         }
@@ -116,15 +119,15 @@ impl Line {
     }
 
     /// Returns count of graphemes in the line
-    pub fn grapheme_count(&self) -> usize {
+    pub fn grapheme_count(&self) -> GraphemeIdx {
         self.fragments.len()
     }
 
     /// Calculates the width of the current line based on the width of each text fragment
-    pub fn width_until(&self, grapheme_index: usize) -> usize {
+    pub fn width_until(&self, grapheme_idx: GraphemeIdx) -> GraphemeIdx {
         self.fragments
             .iter()
-            .take(grapheme_index)
+            .take(grapheme_idx)
             .map(|fragment| match fragment.rendered_width {
                 GraphemeWidth::Half => 1,
                 GraphemeWidth::Full => 2,
@@ -133,7 +136,7 @@ impl Line {
     }
 
     /// Inserts a character at a position
-    pub fn insert_char(&mut self, char: char, at: usize) {
+    pub fn insert_char(&mut self, char: char, at: GraphemeIdx) {
         if let Some(fragment) = self.fragments.get(at) {
             self.string.insert(fragment.start_byte_idx, char);
         } else {
@@ -144,7 +147,7 @@ impl Line {
     }
 
     /// Deletes a character at a position
-    pub fn delete(&mut self, at: usize) {
+    pub fn delete(&mut self, at: GraphemeIdx) {
         if let Some(fragment) = self.fragments.get(at) {
             let start = fragment.start_byte_idx;
             let end = start.saturating_add(fragment.grapheme.len());
@@ -161,7 +164,7 @@ impl Line {
     }
 
     /// Splits Line into two
-    pub fn split(&mut self, at: usize) -> Self {
+    pub fn split(&mut self, at: GraphemeIdx) -> Self {
         if let Some(fragment) = self.fragments.get(at) {
             let remainder = self.string.split_off(fragment.start_byte_idx);
             self.rebuild_fragments();
@@ -183,31 +186,39 @@ impl Line {
         self.width_until(self.grapheme_count())
     }
 
-    pub fn find(&self, query: &str) -> Option<usize> {
+    pub fn search(&self, query: &str, from_grapheme_idx: GraphemeIdx) -> Option<usize> {
+        let start_byte_idx = self.grapheme_idx_to_byte_idx(from_grapheme_idx);
+
         self.string
-            .find(query)
-            .map(|byte_idx| self.byte_idx_to_grapheme_idx(byte_idx))
+            .get(start_byte_idx..)
+            .and_then(|substr| substr.find(query))
+            .map(|byte_idx| self.byte_idx_to_grapheme_idx(byte_idx.saturating_add(start_byte_idx)))
     }
 
-    fn byte_idx_to_grapheme_idx(&self, byte_idx: usize) -> usize {
-        for (grapheme_idx, fragment) in self.fragments.iter().enumerate() {
-            if fragment.start_byte_idx >= byte_idx {
-                return grapheme_idx;
-            }
-        }
-        #[cfg(debug_assertions)]
-        {
-            panic!("Invalid byte_idx passed to byte_idx_to_grapheme_idx: {byte_idx:?}");
-        }
-        #[cfg(not(debug_assertions))]
-        {
-            0
-        }
+    fn byte_idx_to_grapheme_idx(&self, byte_idx: ByteIdx) -> GraphemeIdx {
+        self.fragments
+            .iter()
+            .position(|fragment| fragment.start_byte_idx >= byte_idx)
+            .map_or(0, |grapheme_idx| grapheme_idx)
+    }
+
+    fn grapheme_idx_to_byte_idx(&self, grapheme_idx: GraphemeIdx) -> ByteIdx {
+        self.fragments
+            .get(grapheme_idx)
+            .map_or(0, |fragment| fragment.start_byte_idx)
     }
 }
 
 impl fmt::Display for Line {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.string)
+    }
+}
+
+impl Deref for Line {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.string
     }
 }

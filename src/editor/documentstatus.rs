@@ -1,4 +1,4 @@
-use super::view::Location;
+use super::view::location::Location;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct DocumentStatus {
@@ -24,7 +24,7 @@ impl DocumentStatus {
     pub fn position_indicator_to_string(&self) -> String {
         format!(
             "{}:{}",
-            self.text_location.line_index, self.text_location.grapheme_index,
+            self.text_location.line_idx, self.text_location.grapheme_idx,
         )
     }
 }
