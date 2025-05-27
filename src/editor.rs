@@ -56,6 +56,8 @@ pub struct Editor {
 }
 
 impl Editor {
+    // --- Initialization ---
+
     pub fn new(filename: Option<&String>) -> Result<Self> {
         let current_hook = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |panic_info| {
@@ -71,6 +73,8 @@ impl Editor {
         editor.message_bar.update_message(HELP_MESSAGE);
 
         if let Some(file) = filename {
+            debug_assert!(!file.is_empty());
+
             if editor.view.load(file).is_err() {
                 editor
                     .message_bar
@@ -82,6 +86,8 @@ impl Editor {
 
         Ok(editor)
     }
+
+    // --- Rendering and UI Update ---
 
     pub fn handle_resize_command(&mut self, to: Size) {
         self.terminal_size = to;
@@ -110,6 +116,8 @@ impl Editor {
         }
     }
 
+    // --- Main Loop ---
+
     pub fn run(&mut self) {
         loop {
             self.refresh_status();
@@ -125,10 +133,16 @@ impl Editor {
                     {
                         panic!("Could not read event: {err:?}")
                     }
+                    #[cfg(not(debug_assertions))]
+                    {
+                        let _ = err;
+                    }
                 }
             }
         }
     }
+
+    // --- Event Handling ---
 
     fn evaluate_event(&mut self, event: Event) {
         let should_process = match &event {
@@ -143,6 +157,8 @@ impl Editor {
             }
         }
     }
+
+    // --- Command Processing ---
 
     #[allow(clippy::needless_pass_by_value)]
     fn process_command(&mut self, command: Command) {
@@ -208,10 +224,15 @@ impl Editor {
             Command::Move(Move::Down | Move::Right) => {
                 self.view.search_next();
             }
+            Command::Move(Move::Up | Move::Left) => {
+                self.view.search_prev();
+            }
             Command::System(System::Quit | System::Resize(_) | System::Search | System::Save)
             | Command::Move(_) => {}
         }
     }
+
+    // --- Prompt Handling ---
 
     fn set_prompt(&mut self, prompt_type: PromptType) {
         match prompt_type {
@@ -230,6 +251,8 @@ impl Editor {
     pub fn in_prompt(&self) -> bool {
         !self.prompt_type.is_none()
     }
+
+    // --- File Operations ---
 
     fn handle_save_command(&mut self) {
         if self.view.is_file_loaded() {
@@ -251,6 +274,8 @@ impl Editor {
             Err(_) => self.message_bar.update_message("Error writing file!"),
         }
     }
+
+    // --- Quit Handling ---
 
     // clippy::arithmetic_side_effects: quit_times is guaranteed to be between 0 and QUIT_TIMES
     #[allow(clippy::arithmetic_side_effects)]
@@ -303,6 +328,9 @@ impl Editor {
         } else {
             self.view.caret_position()
         };
+
+        debug_assert!(new_caret_pos.col <= self.terminal_size.width);
+        debug_assert!(new_caret_pos.row <= self.terminal_size.height);
 
         let _ = Terminal::move_caret_to(&new_caret_pos);
         let _ = Terminal::show_caret();

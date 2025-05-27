@@ -18,6 +18,13 @@ mod buffer;
 pub mod location;
 mod searchinfo;
 
+#[derive(Default, PartialEq, Eq, Clone, Copy)]
+pub enum SearchDirection {
+    #[default]
+    Forward,
+    Backward,
+}
+
 #[derive(Default)]
 pub struct View {
     buffer: Buffer,
@@ -29,6 +36,8 @@ pub struct View {
 }
 
 impl View {
+    // --- Command Handlers ---
+
     pub fn handle_edit_command(&mut self, command: Edit) {
         match command {
             Edit::Insert(char) => self.insert_char(char),
@@ -40,8 +49,6 @@ impl View {
 
     pub fn handle_move_command(&mut self, command: Move) {
         let Size { height, .. } = self.size;
-        // This match moves the positon, but does not check for all boundaries.
-        // The final boundarline checking happens after the match statement.
 
         match command {
             Move::Up => self.move_up(1),
@@ -57,6 +64,8 @@ impl View {
         self.scroll_text_location_into_view();
     }
 
+    // --- File Operations ---
+
     pub fn is_file_loaded(&self) -> bool {
         self.buffer.is_file_loaded()
     }
@@ -67,6 +76,16 @@ impl View {
 
         Ok(())
     }
+
+    pub fn save(&mut self) -> Result<(), Error> {
+        self.buffer.save()
+    }
+
+    pub fn save_as(&mut self, file_name: &str) -> Result<(), Error> {
+        self.buffer.save_as(file_name)
+    }
+
+    // --- Cursor / Location Management ---
 
     pub fn caret_position(&self) -> Position {
         self.text_location_into_position()
@@ -137,55 +156,9 @@ impl View {
         self.text_location.line_idx = self.text_location.line_idx.min(self.buffer.height());
     }
 
-    fn scroll_text_location_into_view(&mut self) {
-        let Position { row, col } = self.text_location_into_position();
-
-        self.scroll_vertically(row);
-        self.scroll_horizontally(col);
-    }
-
-    fn scroll_vertically(&mut self, to: usize) {
-        let Size { height, .. } = self.size;
-
-        let offset_changed = if to < self.scroll_offset.row {
-            self.scroll_offset.row = to;
-            true
-        } else if to >= self.scroll_offset.row.saturating_add(height) {
-            self.scroll_offset.row = to.saturating_sub(height).saturating_add(1);
-            true
-        } else {
-            false
-        };
-
-        if offset_changed {
-            self.set_needs_redraw(true);
-        }
-    }
-
-    fn scroll_horizontally(&mut self, to: usize) {
-        let Size { width, .. } = self.size;
-
-        let offset_changed = if to < self.scroll_offset.col {
-            self.scroll_offset.col = to;
-            true
-        } else if to >= self.scroll_offset.row.saturating_add(width) {
-            self.scroll_offset.col = to.saturating_sub(width).saturating_add(1);
-            true
-        } else {
-            false
-        };
-
-        if offset_changed {
-            self.set_needs_redraw(true);
-        }
-    }
-
-    fn render_line(at: usize, line_text: &str) -> Result<(), Error> {
-        Terminal::print_row(at, line_text)
-    }
-
     fn text_location_into_position(&self) -> Position {
         let row = self.text_location.line_idx;
+        debug_assert!(row.saturating_sub(1) <= self.buffer.lines.len());
         let col = self
             .buffer
             .lines
@@ -197,22 +170,6 @@ impl View {
 
     fn get_line_width(&self, at: usize) -> usize {
         self.buffer.lines.get(at).map_or(0, Line::grapheme_count)
-    }
-
-    fn build_welcome_message(width: usize) -> String {
-        if width == 0 {
-            return String::new();
-        }
-
-        let welcome_message = format!("{NAME} editor -- Version {VERSION}");
-        let len = welcome_message.len();
-        let remaining_width = width.saturating_sub(1);
-
-        if remaining_width <= len {
-            return String::from("~");
-        }
-
-        format!("{:<1}{:^remaining_width$}", "~", welcome_message)
     }
 
     fn insert_char(&mut self, char: char) {
@@ -257,19 +214,90 @@ impl View {
         self.set_needs_redraw(true);
     }
 
-    pub fn save(&mut self) -> Result<(), Error> {
-        self.buffer.save()
+    // --- Scrolling ---
+
+    fn scroll_text_location_into_view(&mut self) {
+        let Position { row, col } = self.text_location_into_position();
+
+        self.scroll_vertically(row);
+        self.scroll_horizontally(col);
     }
 
-    pub fn save_as(&mut self, file_name: &str) -> Result<(), Error> {
-        self.buffer.save_as(file_name)
+    fn scroll_vertically(&mut self, to: usize) {
+        let Size { height, .. } = self.size;
+
+        let offset_changed = if to < self.scroll_offset.row {
+            self.scroll_offset.row = to;
+            true
+        } else if to >= self.scroll_offset.row.saturating_add(height) {
+            self.scroll_offset.row = to.saturating_sub(height).saturating_add(1);
+            true
+        } else {
+            false
+        };
+
+        if offset_changed {
+            self.set_needs_redraw(true);
+        }
     }
+
+    fn scroll_horizontally(&mut self, to: usize) {
+        let Size { width, .. } = self.size;
+
+        let offset_changed = if to < self.scroll_offset.col {
+            self.scroll_offset.col = to;
+            true
+        } else if to >= self.scroll_offset.row.saturating_add(width) {
+            self.scroll_offset.col = to.saturating_sub(width).saturating_add(1);
+            true
+        } else {
+            false
+        };
+
+        if offset_changed {
+            self.set_needs_redraw(true);
+        }
+    }
+
+    fn center_text_location(&mut self) {
+        let Size { height, width } = self.size;
+        let Position { row, col } = self.text_location_into_position();
+        let vertical_mid = height.div_ceil(2);
+        let horizontal_mid = width.div_ceil(2);
+        self.scroll_offset.row = row.saturating_sub(vertical_mid);
+        self.scroll_offset.col = col.saturating_sub(horizontal_mid);
+        self.set_needs_redraw(true);
+    }
+
+    // --- Rendering Helpers ---
+
+    fn render_line(at: usize, line_text: &str) -> Result<(), Error> {
+        Terminal::print_row(at, line_text)
+    }
+
+    fn build_welcome_message(width: usize) -> String {
+        if width == 0 {
+            return String::new();
+        }
+
+        let welcome_message = format!("{NAME} editor -- Version {VERSION}");
+        let len = welcome_message.len();
+        let remaining_width = width.saturating_sub(1);
+
+        if remaining_width <= len {
+            return String::from("~");
+        }
+
+        format!("{:<1}{:^remaining_width$}", "~", welcome_message)
+    }
+
+    // --- Search ---
 
     pub fn enter_search(&mut self) {
         self.search_info = Some(SearchInfo {
             prev_location: self.text_location,
             prev_scroll_offset: self.scroll_offset,
-            query: Line::default(),
+            query: None,
         });
     }
 
@@ -281,7 +309,7 @@ impl View {
         if let Some(search_info) = &self.search_info {
             self.text_location = search_info.prev_location;
             self.scroll_offset = search_info.prev_scroll_offset;
-            self.set_needs_redraw(true);
+            self.scroll_text_location_into_view();
         }
 
         self.search_info = None;
@@ -289,66 +317,59 @@ impl View {
 
     pub fn search(&mut self, query: &str) {
         if let Some(search_info) = self.search_info.as_mut() {
-            search_info.query = Line::from(query);
+            search_info.query = Some(Line::from(query));
         }
-        self.search_from(self.text_location);
+        self.search_in_direction(self.text_location, SearchDirection::default());
     }
 
-    pub fn search_from(&mut self, from: Location) {
-        if let Some(search_info) = self.search_info.as_ref() {
-            let query = &search_info.query;
+    /// Panics on debug if query not found
+    fn get_search_query(&self) -> Option<&Line> {
+        let query = self
+            .search_info
+            .as_ref()
+            .and_then(|search_info| search_info.query.as_ref());
+
+        debug_assert!(
+            query.is_some(),
+            "Attempting to search with malformed searchinfo present"
+        );
+
+        query
+    }
+
+    pub fn search_in_direction(&mut self, from: Location, direction: SearchDirection) {
+        if let Some(location) = self.get_search_query().and_then(|query| {
             if query.is_empty() {
-                return;
+                return None;
             }
 
-            if let Some(location) = self.buffer.search(query, from) {
-                self.text_location = location;
-                self.center_text_location();
-                info!("updated location search from: {:?}", self.text_location);
+            if direction == SearchDirection::Backward {
+                self.buffer.search_backward(query, from)
             } else {
-                #[cfg(debug_assertions)]
-                panic!("Attempting to search_from without search_info");
+                self.buffer.search_forward(query, from)
             }
+        }) {
+            self.text_location = location;
+            self.center_text_location();
         }
     }
 
     pub fn search_next(&mut self) {
-        let step_right;
-
-        if let Some(search_info) = self.search_info.as_ref() {
-            info!("{}",search_info.query);
-            step_right = min(search_info.query.grapheme_count(), 1);
-            info!("{step_right}");
-        } else {
-            #[cfg(debug_assertions)]
-            {
-                panic!("Attempting to search_next without search_info");
-            }
-
-            #[cfg(not(debug_assertions))]
-            {
-                return;
-            }
-        }
+        let step_right = self
+            .get_search_query()
+            .map_or(1, |query| min(query.grapheme_count(), 1));
 
         let location = Location {
             line_idx: self.text_location.line_idx,
             grapheme_idx: self.text_location.grapheme_idx.saturating_add(step_right),
         };
 
-        info!("{location:?}");
-
-        self.search_from(location);
+        self.search_in_direction(location, SearchDirection::Forward);
     }
 
-    fn center_text_location(&mut self) {
-        let Size { height, width } = self.size;
-        let Position { row, col } = self.text_location_into_position();
-        let vertical_mid = height.div_ceil(2);
-        let horizontal_mid = width.div_ceil(2);
-        self.scroll_offset.row = row.saturating_sub(vertical_mid);
-        self.scroll_offset.col = col.saturating_sub(horizontal_mid);
-        self.set_needs_redraw(true);
+    pub fn search_prev(&mut self) {
+        info!("{:?}", self.text_location);
+        self.search_in_direction(self.text_location, SearchDirection::Backward);
     }
 }
 

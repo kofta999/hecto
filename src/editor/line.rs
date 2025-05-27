@@ -135,8 +135,9 @@ impl Line {
             .sum()
     }
 
-    /// Inserts a character at a position
+    /// Inserts a character at a position in the line, or appends it if `at` == `grapheme_count + 1`
     pub fn insert_char(&mut self, char: char, at: GraphemeIdx) {
+        debug_assert!(at.saturating_sub(1) <= self.grapheme_count());
         if let Some(fragment) = self.fragments.get(at) {
             self.string.insert(fragment.start_byte_idx, char);
         } else {
@@ -148,6 +149,7 @@ impl Line {
 
     /// Deletes a character at a position
     pub fn delete(&mut self, at: GraphemeIdx) {
+        debug_assert!(at <= self.grapheme_count());
         if let Some(fragment) = self.fragments.get(at) {
             let start = fragment.start_byte_idx;
             let end = start.saturating_add(fragment.grapheme.len());
@@ -186,7 +188,12 @@ impl Line {
         self.width_until(self.grapheme_count())
     }
 
-    pub fn search(&self, query: &str, from_grapheme_idx: GraphemeIdx) -> Option<usize> {
+    pub fn search_forward(&self, query: &str, from_grapheme_idx: GraphemeIdx) -> Option<usize> {
+        debug_assert!(from_grapheme_idx <= self.grapheme_count());
+        if from_grapheme_idx == self.grapheme_count() {
+            return None;
+        }
+
         let start_byte_idx = self.grapheme_idx_to_byte_idx(from_grapheme_idx);
 
         self.string
@@ -195,17 +202,58 @@ impl Line {
             .map(|byte_idx| self.byte_idx_to_grapheme_idx(byte_idx.saturating_add(start_byte_idx)))
     }
 
+    pub fn search_backward(&self, query: &str, from_grapheme_idx: GraphemeIdx) -> Option<usize> {
+        debug_assert!(from_grapheme_idx <= self.grapheme_count());
+        if from_grapheme_idx == 0 {
+            return None;
+        }
+
+        let end_byte_idx = if from_grapheme_idx == self.grapheme_count() {
+            self.string.len()
+        } else {
+            self.grapheme_idx_to_byte_idx(from_grapheme_idx)
+        };
+
+        self.string
+            .get(..end_byte_idx)
+            .and_then(|substr| substr.match_indices(query).last())
+            .map(|(byte_idx, _)| self.byte_idx_to_grapheme_idx(byte_idx))
+    }
+
     fn byte_idx_to_grapheme_idx(&self, byte_idx: ByteIdx) -> GraphemeIdx {
+        debug_assert!(byte_idx <= self.string.len());
         self.fragments
             .iter()
             .position(|fragment| fragment.start_byte_idx >= byte_idx)
-            .map_or(0, |grapheme_idx| grapheme_idx)
+            .map_or_else(
+                || {
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Fragment not found for byte index: {byte_idx:?}");
+                    }
+                    #[cfg(not(debug_assertions))]
+                    {
+                        0
+                    }
+                },
+                |grapheme_idx| grapheme_idx,
+            )
     }
 
     fn grapheme_idx_to_byte_idx(&self, grapheme_idx: GraphemeIdx) -> ByteIdx {
-        self.fragments
-            .get(grapheme_idx)
-            .map_or(0, |fragment| fragment.start_byte_idx)
+        self.fragments.get(grapheme_idx).map_or_else(
+            || {
+                #[cfg(debug_assertions)]
+                {
+                    panic!("Fragment not found for grapheme index: {grapheme_idx:?}");
+                }
+                #[cfg(not(debug_assertions))]
+                {
+                    0
+                }
+            },
+            |fragment| fragment.start_byte_idx,
+        )
     }
 }
 
