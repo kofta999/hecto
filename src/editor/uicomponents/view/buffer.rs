@@ -1,5 +1,3 @@
-use log::info;
-
 use super::{Line, Location};
 use crate::editor::fileinfo::FileInfo;
 use std::fs::{self, File};

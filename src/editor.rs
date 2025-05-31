@@ -1,25 +1,18 @@
+mod annotatedstring;
 mod command;
-mod commandbar;
 mod documentstatus;
 mod fileinfo;
 mod line;
-mod messagebar;
 mod position;
 mod size;
-mod statusbar;
 mod terminal;
-mod uicomponent;
-mod view;
+mod uicomponents;
 use command::{Command, Edit, Move, System};
-use commandbar::CommandBar;
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
-use messagebar::MessageBar;
 use position::Position;
 use size::Size;
-use statusbar::StatusBar;
 use terminal::Terminal;
-use uicomponent::UIComponent;
-use view::View;
+use uicomponents::{CommandBar, MessageBar, StatusBar, UIComponent, View};
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

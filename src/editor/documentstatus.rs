@@ -1,4 +1,4 @@
-use super::view::location::Location;
+use super::uicomponents::Location;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct DocumentStatus {

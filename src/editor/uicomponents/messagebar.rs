@@ -1,4 +1,6 @@
-use super::{size::Size, terminal::Terminal, uicomponent::UIComponent};
+use crate::editor::Size;
+use crate::editor::Terminal;
+use crate::editor::uicomponents::UIComponent;
 use std::{
     io::Error,
     time::{Duration, Instant},

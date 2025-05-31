@@ -1,6 +1,5 @@
+use crate::editor::Size;
 use std::io::Error;
-
-use super::size::Size;
 
 pub trait UIComponent {
     /// Updates the sizes and marks as redraw-needed

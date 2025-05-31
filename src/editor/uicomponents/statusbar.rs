@@ -1,5 +1,7 @@
-use super::{documentstatus::DocumentStatus, size::Size, uicomponent::UIComponent};
+use crate::editor::Size;
+use crate::editor::documentstatus::DocumentStatus;
 use crate::editor::terminal::Terminal;
+use crate::editor::uicomponents::UIComponent;
 use std::io::Error;
 
 #[derive(Default)]
