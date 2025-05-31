@@ -1,7 +1,7 @@
+use crate::editor::annotation::Annotation;
+use crate::editor::annotationtype::AnnotationType;
 use annotatedstringiterator::AnnotatedStringIterator;
 use annotatedstringpart::AnnotatedStringPart;
-use annotation::Annotation;
-pub use annotationtype::AnnotationType;
 use std::{
     cmp::{max, min},
     fmt::Display,
@@ -10,8 +10,6 @@ use std::{
 use crate::prelude::ByteIdx;
 mod annotatedstringiterator;
 mod annotatedstringpart;
-mod annotation;
-mod annotationtype;
 
 #[derive(Default)]
 pub struct AnnotatedString {
@@ -21,22 +19,12 @@ pub struct AnnotatedString {
 
 impl AnnotatedString {
     pub fn from(string: &str) -> Self {
-        let mut annotated_string = Self {
+        
+
+        Self {
             string: String::from(string),
             annotations: Vec::new(),
-        };
-
-        for (byte_idx, char) in string.chars().enumerate() {
-            if char.is_ascii_digit() {
-                annotated_string.add_annotation(
-                    AnnotationType::Digit,
-                    byte_idx,
-                    byte_idx.saturating_add(1),
-                );
-            }
         }
-
-        annotated_string
     }
 
     pub fn add_annotation(

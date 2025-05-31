@@ -1,4 +1,6 @@
 mod annotatedstring;
+mod annotation;
+mod annotationtype;
 mod command;
 mod documentstatus;
 mod fileinfo;

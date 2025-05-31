@@ -1,4 +1,6 @@
-use super::annotationtype::AnnotationType;
+use crate::editor::annotationtype::AnnotationType;
+
+
 
 pub struct AnnotatedStringPart<'a> {
     pub string: &'a str,

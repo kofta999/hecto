@@ -1,6 +1,5 @@
 use super::graphemewidth::GraphemeWidth;
 
-#[derive(Debug)]
 /// A text unit, which is a grapheme in Unicode world
 pub struct TextFragment {
     pub grapheme: String,

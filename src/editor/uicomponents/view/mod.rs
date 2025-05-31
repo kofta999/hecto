@@ -9,11 +9,13 @@ use crate::editor::NAME;
 use crate::editor::VERSION;
 use crate::prelude::*;
 use buffer::Buffer;
+use highlighter::Highlighter;
 use log::info;
 use searchdirection::SearchDirection;
 use searchinfo::SearchInfo;
 use std::{cmp::min, io::Error};
 mod buffer;
+mod highlighter;
 mod searchdirection;
 mod searchinfo;
 
@@ -86,10 +88,10 @@ impl View {
 
     pub fn get_status(&self) -> DocumentStatus {
         DocumentStatus {
-            filename: format!("{}", self.buffer.file_info),
+            filename: format!("{}", self.buffer.get_file_info()),
             line_count: self.buffer.height(),
             text_location: self.text_location,
-            is_modified: self.buffer.dirty,
+            is_modified: self.buffer.is_dirty(),
         }
     }
 
@@ -150,18 +152,16 @@ impl View {
 
     fn text_location_into_position(&self) -> Position {
         let row = self.text_location.line_idx;
-        debug_assert!(row.saturating_sub(1) <= self.buffer.lines.len());
+        debug_assert!(row.saturating_sub(1) <= self.buffer.height());
         let col = self
             .buffer
-            .lines
-            .get(row)
-            .map_or(0, |line| line.width_until(self.text_location.grapheme_idx));
+            .width_until(row, self.text_location.grapheme_idx);
 
         Position { row, col }
     }
 
     fn get_line_width(&self, at: usize) -> usize {
-        self.buffer.lines.get(at).map_or(0, Line::grapheme_count)
+        self.buffer.grapheme_count(at)
     }
 
     fn insert_char(&mut self, char: char) {
@@ -375,28 +375,30 @@ impl UIComponent for View {
         let top_third = height.div_ceil(3);
         let scroll_top = self.scroll_offset.row;
         let end_y = origin_row.saturating_add(height);
+        let query = self
+            .search_info
+            .as_ref()
+            .and_then(|search_info| search_info.query.as_deref());
+        let selected_match = query.is_some().then_some(self.text_location);
+        let mut highlighter = Highlighter::new(query, selected_match);
+
+        for current_row in 0..end_y {
+            self.buffer.highlight(current_row, &mut highlighter);
+        }
 
         for current_row in origin_row..end_y {
             let line_idx = current_row
                 .saturating_sub(origin_row)
                 .saturating_add(scroll_top);
 
-            if let Some(line) = self.buffer.lines.get(line_idx) {
-                let left = self.scroll_offset.col;
-                let right = self.scroll_offset.col.saturating_add(width);
+            let left = self.scroll_offset.col;
+            let right = self.scroll_offset.col.saturating_add(width);
 
-                let query = self
-                    .search_info
-                    .as_ref()
-                    .and_then(|search_info| search_info.query.as_deref());
-
-                let selected_match = (self.text_location.line_idx == line_idx && query.is_some())
-                    .then_some(self.text_location.grapheme_idx);
-
-                Terminal::print_annotated_row(
-                    current_row,
-                    &line.get_annotated_visible_substr(left..right, query, selected_match),
-                )?;
+            if let Some(annotated_string) =
+                self.buffer
+                    .get_highlighted_substring(line_idx, left..right, &highlighter)
+            {
+                Terminal::print_annotated_row(current_row, &annotated_string)?;
             } else if current_row == top_third && self.buffer.is_empty() {
                 let message = Self::build_welcome_message(width);
                 Self::render_line(current_row, &message)?;

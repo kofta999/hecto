@@ -1,6 +1,6 @@
 mod graphemewidth;
 mod textfragment;
-use super::annotatedstring::{AnnotatedString, AnnotationType};
+use super::{annotatedstring::AnnotatedString, annotation::Annotation};
 use crate::editor::line::graphemewidth::GraphemeWidth;
 use crate::prelude::*;
 use std::{
@@ -12,7 +12,7 @@ use textfragment::TextFragment;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 /// A line of text fragments
 pub struct Line {
     fragments: Vec<TextFragment>,
@@ -68,15 +68,13 @@ impl Line {
 
     /// Gets the graphemes that can be displayed on screen
     pub fn get_visible_graphemes(&self, range: Range<ColIdx>) -> String {
-        self.get_annotated_visible_substr(range, None, None)
-            .to_string()
+        self.get_annotated_visible_substr(range, None).to_string()
     }
 
     pub fn get_annotated_visible_substr(
         &self,
         range: Range<ColIdx>,
-        query: Option<&str>,
-        selected_match: Option<GraphemeIdx>,
+        annotations: Option<&Vec<Annotation>>,
     ) -> AnnotatedString {
         if range.start >= range.end {
             return AnnotatedString::default();
@@ -84,79 +82,16 @@ impl Line {
 
         let mut result = AnnotatedString::from(&self.string);
 
-        if let Some(query) = query {
-            if !query.is_empty() {
-                self.find_all(query, 0..self.string.len()).iter().for_each(
-                    |(start, grapheme_idx)| {
-                        if let Some(selected_match) = selected_match {
-                            if *grapheme_idx == selected_match {
-                                result.add_annotation(
-                                    AnnotationType::SelectedMatch,
-                                    *start,
-                                    start.saturating_add(query.len()),
-                                );
-
-                                return;
-                            }
-                        }
-
-                        result.add_annotation(
-                            AnnotationType::Match,
-                            *start,
-                            start.saturating_add(query.len()),
-                        );
-                    },
-                );
-            }
-
-            let mut fragment_start = self.width();
-
-            for fragment in self.fragments.iter().rev() {
-                let fragment_end = fragment_start;
-                fragment_start = fragment_start.saturating_sub(fragment.rendered_width.into());
-
-                if fragment_start > range.end {
-                    continue;
-                }
-
-                if fragment_start < range.end && fragment_end > range.end {
-                    result.replace(fragment.start, self.string.len(), "⋯");
-                    continue;
-                } else if fragment_start == range.end {
-                    result.truncate_right_from(fragment.start);
-                    continue;
-                }
-
-                if fragment_end <= range.start {
-                    result.truncate_left_until(
-                        fragment.start.saturating_add(fragment.grapheme.len()),
-                    );
-                    break;
-                } else if fragment_start < range.start && fragment_end > range.start {
-                    result.replace(
-                        0,
-                        fragment.start.saturating_add(fragment.grapheme.len()),
-                        "⋯",
-                    );
-
-                    break;
-                }
-
-                // Fragment is fully within range: Apply replacement characters if appropriate
-                if fragment_start >= range.start && fragment_end <= range.end {
-                    if let Some(replacement) = fragment.replacement {
-                        let start = fragment.start;
-                        let end = start.saturating_add(fragment.grapheme.len());
-                        result.replace(start, end, &replacement.to_string());
-                    }
-                }
+        if let Some(annotations) = annotations {
+            for annotation in annotations {
+                result.add_annotation(annotation.annotation_type, annotation.start, annotation.end);
             }
         }
 
         result
     }
 
-    fn find_all(&self, query: &str, range: Range<ByteIdx>) -> Vec<(ByteIdx, GraphemeIdx)> {
+    pub fn find_all(&self, query: &str, range: Range<ByteIdx>) -> Vec<(ByteIdx, GraphemeIdx)> {
         let end = min(range.end, self.string.len());
         let start = range.start;
         debug_assert!(start <= end);

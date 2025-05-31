@@ -1,13 +1,17 @@
+use super::highlighter::Highlighter;
 use super::{Line, Location};
+use crate::editor::annotatedstring::AnnotatedString;
 use crate::editor::fileinfo::FileInfo;
+use crate::prelude::*;
 use std::fs::{self, File};
 use std::io::{Error, Write};
+use std::ops::Range;
 
 #[derive(Default)]
 pub struct Buffer {
-    pub lines: Vec<Line>,
-    pub file_info: FileInfo,
-    pub dirty: bool,
+    lines: Vec<Line>,
+    file_info: FileInfo,
+    dirty: bool,
 }
 
 /// Where the text resides
@@ -15,6 +19,40 @@ impl Buffer {
     /// Checks if a buffer is empty
     pub fn is_empty(&self) -> bool {
         self.height() == 0
+    }
+
+    pub const fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+    pub const fn get_file_info(&self) -> &FileInfo {
+        &self.file_info
+    }
+
+    pub fn grapheme_count(&self, idx: LineIdx) -> GraphemeIdx {
+        self.lines.get(idx).map_or(0, Line::grapheme_count)
+    }
+
+    pub fn width_until(&self, idx: LineIdx, until: GraphemeIdx) -> GraphemeIdx {
+        self.lines
+            .get(idx)
+            .map_or(0, |line| line.width_until(until))
+    }
+
+    pub fn get_highlighted_substring(
+        &self,
+        line_idx: LineIdx,
+        range: Range<GraphemeIdx>,
+        highlighter: &Highlighter,
+    ) -> Option<AnnotatedString> {
+        self.lines.get(line_idx).map(|line| {
+            line.get_annotated_visible_substr(range, highlighter.get_annotations(line_idx))
+        })
+    }
+
+    pub fn highlight(&self, idx: LineIdx, highlighter: &mut Highlighter) {
+        if let Some(line) = self.lines.get(idx) {
+            highlighter.highlight(idx, line);
+        }
     }
 
     /// Loads a file into a buffer
@@ -34,7 +72,7 @@ impl Buffer {
     }
 
     /// Returns the length of buffer lines
-    pub fn height(&self) -> usize {
+    pub fn height(&self) -> LineIdx {
         self.lines.len()
     }
 
