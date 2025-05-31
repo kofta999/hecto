@@ -263,7 +263,7 @@ impl Line {
         let start_byte_idx = self.grapheme_idx_to_byte_idx(from_grapheme_idx);
 
         self.find_all(query, start_byte_idx..self.string.len())
-            .last()
+            .first()
             .map(|(_, grapheme_idx)| *grapheme_idx)
     }
 
