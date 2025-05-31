@@ -6,6 +6,7 @@ mod documentstatus;
 mod fileinfo;
 mod line;
 mod terminal;
+mod filetype;
 mod uicomponents;
 use crate::prelude::*;
 use command::{Command, Edit, Move, System};

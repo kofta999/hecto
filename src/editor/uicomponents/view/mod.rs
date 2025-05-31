@@ -87,11 +87,13 @@ impl View {
     }
 
     pub fn get_status(&self) -> DocumentStatus {
+        let file_info = self.buffer.get_file_info();
         DocumentStatus {
-            filename: format!("{}", self.buffer.get_file_info()),
+            filename: format!("{file_info}"),
             line_count: self.buffer.height(),
             text_location: self.text_location,
             is_modified: self.buffer.is_dirty(),
+            file_type: file_info.get_file_type(),
         }
     }
 

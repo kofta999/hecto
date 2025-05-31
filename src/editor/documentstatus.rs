@@ -1,3 +1,4 @@
+use super::filetype::FileType;
 use crate::prelude::Location;
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -6,6 +7,7 @@ pub struct DocumentStatus {
     pub line_count: usize,
     pub text_location: Location,
     pub is_modified: bool,
+    pub file_type: FileType,
 }
 
 impl DocumentStatus {
@@ -26,5 +28,9 @@ impl DocumentStatus {
             "{}:{}",
             self.text_location.line_idx, self.text_location.grapheme_idx,
         )
+    }
+
+    pub fn file_type_to_string(&self) -> String {
+        self.file_type.to_string()
     }
 }

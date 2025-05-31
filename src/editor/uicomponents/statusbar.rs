@@ -33,8 +33,10 @@ impl UIComponent for StatusBar {
 
         let position_indicator = self.current_status.position_indicator_to_string();
         let reminder_len = self.size.width.saturating_sub(beginning.len());
+        let file_type = self.current_status.file_type_to_string();
 
-        let status = format!("{beginning}{position_indicator:>reminder_len$}");
+        let back_part = format!("{file_type} | {position_indicator}");
+        let status = format!("{beginning}{back_part:>reminder_len$}");
 
         let to_print = if status.len() <= self.size.width {
             status
