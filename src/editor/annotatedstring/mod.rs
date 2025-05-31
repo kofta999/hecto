@@ -21,10 +21,22 @@ pub struct AnnotatedString {
 
 impl AnnotatedString {
     pub fn from(string: &str) -> Self {
-        Self {
+        let mut annotated_string = Self {
             string: String::from(string),
             annotations: Vec::new(),
+        };
+
+        for (byte_idx, char) in string.chars().enumerate() {
+            if char.is_ascii_digit() {
+                annotated_string.add_annotation(
+                    AnnotationType::Digit,
+                    byte_idx,
+                    byte_idx.saturating_add(1),
+                );
+            }
         }
+
+        annotated_string
     }
 
     pub fn add_annotation(
