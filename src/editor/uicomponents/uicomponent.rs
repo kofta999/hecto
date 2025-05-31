@@ -1,4 +1,4 @@
-use crate::editor::Size;
+use crate::{editor::Size, prelude::RowIdx};
 use std::io::Error;
 
 pub trait UIComponent {
@@ -9,9 +9,9 @@ pub trait UIComponent {
     }
 
     /// Draw this component if it's visible and in need of re-drawing
-    fn render(&mut self, origin_row: usize) {
+    fn render(&mut self, origin: RowIdx) {
         if self.needs_redraw() {
-            if let Err(err) = self.draw(origin_row) {
+            if let Err(err) = self.draw(origin) {
                 #[cfg(debug_assertions)]
                 {
                     panic!("Could not render component: {err:?}");
@@ -27,7 +27,7 @@ pub trait UIComponent {
     }
 
     /// Method to actually draw the component, must be implemented by each component
-    fn draw(&mut self, origin_y: usize) -> Result<(), Error>;
+    fn draw(&mut self, origin: RowIdx) -> Result<(), Error>;
 
     /// Updates the size. Needs to be implemented by each component.
     fn set_size(&mut self, to: Size);

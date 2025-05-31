@@ -1,4 +1,4 @@
-use super::size::Size;
+use crate::prelude::Size;
 mod edit;
 mod movecommand;
 mod system;

@@ -1,6 +1,7 @@
 use crate::editor::Size;
 use crate::editor::Terminal;
 use crate::editor::uicomponents::UIComponent;
+use crate::prelude::RowIdx;
 use std::{
     io::Error,
     time::{Duration, Instant},
@@ -59,7 +60,7 @@ impl UIComponent for MessageBar {
 
     fn set_size(&mut self, _: Size) {}
 
-    fn draw(&mut self, origin: usize) -> Result<(), Error> {
+    fn draw(&mut self, origin: RowIdx) -> Result<(), Error> {
         let message = if self.current_message.is_expired() {
             self.cleared_after_expiry = true;
             ""

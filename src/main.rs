@@ -9,6 +9,7 @@
 use editor::Editor;
 use log::LevelFilter;
 mod editor;
+mod prelude;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

@@ -1,5 +1,5 @@
-use super::location::Location;
-use crate::editor::{line::Line, position::Position};
+use crate::editor::line::Line;
+use crate::prelude::*;
 
 pub struct SearchInfo {
     pub prev_location: Location,

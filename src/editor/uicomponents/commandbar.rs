@@ -1,4 +1,5 @@
-use crate::editor::{command::Edit, line::Line, size::Size, terminal::Terminal};
+use crate::editor::{command::Edit, line::Line, terminal::Terminal};
+use crate::prelude::{ColIdx, RowIdx, Size};
 
 use super::UIComponent;
 
@@ -31,7 +32,7 @@ impl CommandBar {
         self.set_needs_redraw(true);
     }
 
-    pub fn caret_position_col(&self) -> usize {
+    pub fn caret_position_col(&self) -> ColIdx {
         self.prompt
             .len()
             .saturating_add(self.value.grapheme_count())
@@ -44,7 +45,7 @@ impl CommandBar {
 }
 
 impl UIComponent for CommandBar {
-    fn draw(&mut self, origin_y: usize) -> Result<(), std::io::Error> {
+    fn draw(&mut self, origin: RowIdx) -> Result<(), std::io::Error> {
         let area_for_value = self.size.width.saturating_sub(self.prompt.len());
         let value_end = self.value.width();
         let value_start = value_end.saturating_sub(area_for_value);
@@ -60,7 +61,7 @@ impl UIComponent for CommandBar {
             String::new()
         };
 
-        Terminal::print_row(origin_y, &to_print)
+        Terminal::print_row(origin, &to_print)
     }
 
     fn set_size(&mut self, size: Size) {

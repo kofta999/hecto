@@ -1,4 +1,4 @@
-use super::uicomponents::Location;
+use crate::prelude::Location;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct DocumentStatus {

@@ -3,19 +3,14 @@ mod command;
 mod documentstatus;
 mod fileinfo;
 mod line;
-mod position;
-mod size;
 mod terminal;
 mod uicomponents;
+use crate::prelude::*;
 use command::{Command, Edit, Move, System};
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
-use position::Position;
-use size::Size;
 use terminal::Terminal;
 use uicomponents::{CommandBar, MessageBar, StatusBar, UIComponent, View};
 
-pub const NAME: &str = env!("CARGO_PKG_NAME");
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 3;
 const HELP_MESSAGE: &str = "HELP: Ctrl-F = Search | Ctrl-S = save | Ctrl-X = quit";
 

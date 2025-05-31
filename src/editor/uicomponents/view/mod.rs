@@ -2,21 +2,18 @@ use super::super::{
     command::{Edit, Move},
     documentstatus::DocumentStatus,
     line::Line,
-    position::Position,
-    size::Size,
     terminal::Terminal,
 };
 use super::UIComponent;
 use crate::editor::NAME;
 use crate::editor::VERSION;
+use crate::prelude::*;
 use buffer::Buffer;
-pub use location::Location;
 use log::info;
 use searchdirection::SearchDirection;
 use searchinfo::SearchInfo;
 use std::{cmp::min, io::Error};
 mod buffer;
-mod location;
 mod searchdirection;
 mod searchinfo;
 
@@ -218,7 +215,7 @@ impl View {
         self.scroll_horizontally(col);
     }
 
-    fn scroll_vertically(&mut self, to: usize) {
+    fn scroll_vertically(&mut self, to: RowIdx) {
         let Size { height, .. } = self.size;
 
         let offset_changed = if to < self.scroll_offset.row {
@@ -236,7 +233,7 @@ impl View {
         }
     }
 
-    fn scroll_horizontally(&mut self, to: usize) {
+    fn scroll_horizontally(&mut self, to: ColIdx) {
         let Size { width, .. } = self.size;
 
         let offset_changed = if to < self.scroll_offset.col {
@@ -266,7 +263,7 @@ impl View {
 
     // --- Rendering Helpers ---
 
-    fn render_line(at: usize, line_text: &str) -> Result<(), Error> {
+    fn render_line(at: RowIdx, line_text: &str) -> Result<(), Error> {
         Terminal::print_row(at, line_text)
     }
 
@@ -372,7 +369,7 @@ impl View {
 }
 
 impl UIComponent for View {
-    fn draw(&mut self, origin_row: usize) -> Result<(), Error> {
+    fn draw(&mut self, origin_row: RowIdx) -> Result<(), Error> {
         let Size { height, width } = self.size;
 
         let top_third = height.div_ceil(3);
