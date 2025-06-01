@@ -5,6 +5,65 @@ use crate::{
 };
 use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
+const KEYWORDS: [&str; 52] = [
+    "break",
+    "const",
+    "continue",
+    "crate",
+    "else",
+    "enum",
+    "extern",
+    "false",
+    "fn",
+    "for",
+    "if",
+    "impl",
+    "in",
+    "let",
+    "loop",
+    "match",
+    "mod",
+    "move",
+    "mut",
+    "pub",
+    "ref",
+    "return",
+    "self",
+    "Self",
+    "static",
+    "struct",
+    "super",
+    "trait",
+    "true",
+    "type",
+    "unsafe",
+    "use",
+    "where",
+    "while",
+    "async",
+    "await",
+    "dyn",
+    "abstract",
+    "become",
+    "box",
+    "do",
+    "final",
+    "macro",
+    "override",
+    "priv",
+    "typeof",
+    "unsized",
+    "virtual",
+    "yield",
+    "try",
+    "macro_rules",
+    "union",
+];
+const TYPES: [&str; 22] = [
+    "i8", "i16", "i32", "i64", "i128", "isize", "u8", "u16", "u32", "u64", "u128", "usize", "f32",
+    "f64", "bool", "char", "Option", "Result", "String", "str", "Vec", "HashMap",
+];
+const KNOWN_VALUES: [&str; 4] = ["Some", "None", "Ok", "Err"];
 
 #[derive(Default)]
 pub struct RustSyntaxHighlighter {
@@ -12,18 +71,6 @@ pub struct RustSyntaxHighlighter {
 }
 
 impl RustSyntaxHighlighter {
-    fn highlight_digits(line: &Line, result: &mut Vec<Annotation>) {
-        for (word_idx, word) in line.split_word_bound_indices() {
-            if Self::is_valid_number(word) {
-                result.push(Annotation {
-                    annotation_type: AnnotationType::Number,
-                    start: word_idx,
-                    end: word_idx.saturating_add(word.len()),
-                });
-            }
-        }
-    }
-
     fn is_valid_number(word: &str) -> bool {
         if word.is_empty() {
             return false;
@@ -95,12 +142,45 @@ impl RustSyntaxHighlighter {
 
         chars.all(|char| char.is_digit(base))
     }
+
+    fn is_keyword(word: &str) -> bool {
+        KEYWORDS.contains(&word)
+    }
+
+    fn is_type(word: &str) -> bool {
+        TYPES.contains(&word)
+    }
+
+    fn is_known_literal(word: &str) -> bool {
+        KNOWN_VALUES.contains(&word)
+    }
 }
 
 impl SyntaxHighlighter for RustSyntaxHighlighter {
     fn highlight(&mut self, idx: LineIdx, line: &Line) {
         let mut result = Vec::new();
-        Self::highlight_digits(line, &mut result);
+        for (word_idx, word) in line.split_word_bound_indices() {
+            let mut annotation_type = None;
+
+            if Self::is_valid_number(word) {
+                annotation_type = Some(AnnotationType::Number);
+            } else if Self::is_keyword(word) {
+                annotation_type = Some(AnnotationType::Keyword);
+            } else if Self::is_type(word) {
+                annotation_type = Some(AnnotationType::Type);
+            } else if Self::is_known_literal(word) {
+                annotation_type = Some(AnnotationType::KnownLiteral);
+            }
+
+            if let Some(annotation_type) = annotation_type {
+                result.push(Annotation {
+                    annotation_type,
+                    start: word_idx,
+                    end: word_idx.saturating_add(word.len()),
+                });
+            }
+        }
+
         self.highlights.insert(idx, result);
     }
 

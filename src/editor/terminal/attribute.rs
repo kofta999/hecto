@@ -41,6 +41,18 @@ impl From<AnnotationType> for Attribute {
                 }),
                 background: None,
             },
+            AnnotationType::Keyword => Self {
+                foreground: Some(Color::Blue),
+                background: None,
+            },
+            AnnotationType::Type => Self {
+                foreground: Some(Color::Green),
+                background: None,
+            },
+            AnnotationType::KnownLiteral => Self {
+                foreground: Some(Color::Magenta),
+                background: None,
+            },
         }
     }
 }
