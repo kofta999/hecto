@@ -15,7 +15,7 @@ pub struct RustSyntaxHighlighter {
 impl RustSyntaxHighlighter {
     fn highlight_digits(line: &Line, result: &mut Vec<Annotation>) {
         for (word_idx, word) in line.split_word_bound_indices() {
-            if Self::is_int(word) || Self::is_float(word) || Self::is_scientific_notation(word) {
+            if Self::is_valid_number(word) {
                 result.push(Annotation {
                     annotation_type: AnnotationType::Number,
                     start: word_idx,
@@ -25,43 +25,51 @@ impl RustSyntaxHighlighter {
         }
     }
 
-    fn is_int(word: &str) -> bool {
+    fn is_valid_number(word: &str) -> bool {
         if word.is_empty() {
             return false;
         }
-        let mut should_highlight = true;
 
-        for (char_idx, char) in word.chars().enumerate() {
-            if char == '_' {
-                if char_idx == 0 || char_idx == word.len().saturating_sub(1) {
-                    should_highlight = false;
-                }
-            } else if !char.is_ascii_digit() {
-                should_highlight = false;
+        let mut chars = word.chars();
+
+        if let Some(first_char) = chars.next() {
+            if !first_char.is_ascii_digit() {
+                return false;
             }
         }
 
-        should_highlight
-    }
+        let mut seen_dot = false;
+        let mut seen_e = false;
+        let mut prev_was_digit = true;
 
-    fn is_float(word: &str) -> bool {
-        let res: Vec<&str> = word.split('.').collect();
-
-        if res.len() != 2 {
-            return false;
+        for char in chars {
+            match char {
+                '0'..='9' => prev_was_digit = true,
+                '_' => {
+                    if !prev_was_digit {
+                        return false;
+                    }
+                    prev_was_digit = false;
+                }
+                '.' => {
+                    if seen_dot || seen_e || !prev_was_digit {
+                        return false;
+                    }
+                    seen_dot = true;
+                    prev_was_digit = false;
+                }
+                'e' | 'E' => {
+                    if seen_e || !prev_was_digit {
+                        return false;
+                    }
+                    seen_e = true;
+                    prev_was_digit = false;
+                }
+                _ => return false,
+            }
         }
 
-        Self::is_int(res[0]) && Self::is_int(res[1])
-    }
-
-    fn is_scientific_notation(word: &str) -> bool {
-        let res: Vec<&str> = word.split('e').collect();
-
-        if res.len() != 2 {
-            return false;
-        }
-
-        (Self::is_float(res[0]) || Self::is_int(res[0])) && Self::is_int(res[1])
+        prev_was_digit
     }
 }
 
