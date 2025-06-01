@@ -5,8 +5,8 @@ use super::super::{
     terminal::Terminal,
 };
 use super::UIComponent;
-use crate::editor::NAME;
 use crate::editor::VERSION;
+use crate::editor::{NAME, filetype::FileType};
 use crate::prelude::*;
 use buffer::Buffer;
 use highlighter::Highlighter;
@@ -72,11 +72,17 @@ impl View {
     }
 
     pub fn save(&mut self) -> Result<(), Error> {
-        self.buffer.save()
+        self.buffer.save()?;
+        self.set_needs_redraw(true);
+
+        Ok(())
     }
 
     pub fn save_as(&mut self, file_name: &str) -> Result<(), Error> {
-        self.buffer.save_as(file_name)
+        self.buffer.save_as(file_name)?;
+        self.set_needs_redraw(true);
+
+        Ok(())
     }
 
     // --- Cursor / Location Management ---
@@ -382,10 +388,16 @@ impl UIComponent for View {
             .as_ref()
             .and_then(|search_info| search_info.query.as_deref());
         let selected_match = query.is_some().then_some(self.text_location);
-        let mut highlighter = Highlighter::new(query, selected_match);
+        let mut highlighter = Highlighter::new(
+            query,
+            selected_match,
+            self.buffer.get_file_info().get_file_type(),
+        );
 
-        for current_row in 0..end_y {
-            self.buffer.highlight(current_row, &mut highlighter);
+        if self.buffer.get_file_info().get_file_type() != FileType::Text {
+            for current_row in 0..end_y.saturating_add(scroll_top) {
+                self.buffer.highlight(current_row, &mut highlighter);
+            }
         }
 
         for current_row in origin_row..end_y {
