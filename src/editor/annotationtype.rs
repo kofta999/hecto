@@ -7,5 +7,6 @@ pub enum AnnotationType {
     Type,
     KnownLiteral,
     Char,
-    LifetimeSpecifier
+    LifetimeSpecifier,
+    Comment,
 }
