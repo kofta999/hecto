@@ -46,11 +46,19 @@ impl From<AnnotationType> for Attribute {
                 background: None,
             },
             AnnotationType::Type => Self {
-                foreground: Some(Color::Green),
+                foreground: Some(Color::Yellow),
                 background: None,
             },
             AnnotationType::KnownLiteral => Self {
                 foreground: Some(Color::Magenta),
+                background: None,
+            },
+            AnnotationType::Char => Self {
+                foreground: Some(Color::Green),
+                background: None,
+            },
+            AnnotationType::LifetimeSpecifier => Self {
+                foreground: Some(Color::DarkMagenta),
                 background: None,
             },
         }
