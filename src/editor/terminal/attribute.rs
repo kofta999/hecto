@@ -53,7 +53,7 @@ impl From<AnnotationType> for Attribute {
                 foreground: Some(Color::Magenta),
                 background: None,
             },
-            AnnotationType::Char => Self {
+            AnnotationType::Char | AnnotationType::String => Self {
                 foreground: Some(Color::Green),
                 background: None,
             },
