@@ -158,8 +158,8 @@ Please ensure your code adheres to the existing style and consider adding tests 
 
 ## 📝 TODO
 
-[ ] Support for more syntax highlighting languages.
-[ ] Configuration file (e.g., TOML) for settings.
-[ ] More advanced editing features (e.g., copy/paste, undo/redo).
-[ ] Mouse support.
-[ ] Basic Vim-like modal editing (Normal, Insert modes).
+- [ ] Support for more syntax highlighting languages.
+- [ ] Configuration file (e.g., TOML) for settings.
+- [ ] More advanced editing features (e.g., copy/paste, undo/redo).
+- [ ] Mouse support.
+- [ ] Basic Vim-like modal editing (Normal, Insert modes).
