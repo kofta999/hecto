@@ -46,7 +46,7 @@ Hecto is a terminal-based text editor built in Rust, inspired by [Philipp Flenke
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/<your-username>/hecto.git # Replace with your repo URL
+    git clone https://github.com/kofta999/hecto.git
     cd hecto
     ```
 2.  Build the project:
